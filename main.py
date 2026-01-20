@@ -111,18 +111,27 @@ else:
     # 2. Chat Input
     input_ph = "Please give feedback on the last answer..." if st.session_state["feedback_pending"] else "Ask your question here..."
     if prompt := st.chat_input(input_ph, disabled=st.session_state["feedback_pending"]):
+
+        # Add to history BEFORE the AI starts
         st.session_state["messages"].append({"role": "user", "content": prompt})
+
+        # Manually show the user message so it appears while AI is thinking
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
         with st.chat_message("assistant"):
             with st.container(border=True):
                 st.markdown("**Business Planning Assistant:**")
                 with st.spinner("Thinking..."):
                     ai_manager = AIManager(selected_label)
-                    reply = ai_manager.get_response(st.session_state["messages"], system_instr)
-                    st.markdown(reply)
 
-        save_to_firebase(st.session_state["current_user"], selected_label, prompt, reply, "INITIAL_QUERY")
-        st.session_state["messages"].append({"role": "assistant", "content": reply})
+                    full_response = st.write_stream(
+                        ai_manager.get_response_stream(st.session_state["messages"], system_instr)
+                    )
+
+        # --- STEP 4: Finalize State ---
+        save_to_firebase(st.session_state["current_user"], selected_label, prompt, full_response, "INITIAL_QUERY")
+        st.session_state["messages"].append({"role": "assistant", "content": full_response})
         st.session_state["feedback_pending"] = True
         st.rerun()
 
