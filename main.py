@@ -110,27 +110,24 @@ else:
                 st.markdown(f"**{label}:**")
                 st.markdown(msg["content"])
 
-            # 2. The Clarification Trigger Catch
-            if st.session_state.get("trigger_clarification", False):
-                with st.chat_message("assistant"):
-                    with st.container(border=True):
-                        st.markdown("**Business Planning Assistant:**")
+    # 2. NEW: The Clarification Trigger Catch
+    # This block runs if handle_feedback set the trigger_clarification flag
+    if st.session_state.get("trigger_clarification", False):
+        with st.chat_message("assistant"):
+            with st.container(border=True):
+                st.markdown("**Business Planning Assistant:**")
+                ai_manager = AIManager(selected_label)
+                # Stream the response for the clarification prompt
+                full_response = st.write_stream(
+                    ai_manager.get_response_stream(st.session_state["messages"], system_instr)
+                )
 
-                        # Added the missing colon here
-                        with st.spinner("Thinking..."):
-                            ai_manager = AIManager(selected_label)
-
-                            # Indented these so they run while the spinner is visible
-                            full_response = st.write_stream(
-                                ai_manager.get_response_stream(st.session_state["messages"], system_instr)
-                            )
-
-                # Finalize Clarification State
-                save_to_firebase(st.session_state["current_user"], selected_label, "Clarification Request", full_response, "CLARIFICATION_RESPONSE")
-                st.session_state["messages"].append({"role": "assistant", "content": full_response})
-                st.session_state["trigger_clarification"] = False  # Reset the trigger
-                st.session_state["feedback_pending"] = True  # Show feedback buttons again
-                st.rerun()
+        # Finalize Clarification State
+        save_to_firebase(st.session_state["current_user"], selected_label, "Clarification Request", full_response, "CLARIFICATION_RESPONSE")
+        st.session_state["messages"].append({"role": "assistant", "content": full_response})
+        st.session_state["trigger_clarification"] = False  # Reset the trigger
+        st.session_state["feedback_pending"] = True       # Show feedback buttons again
+        st.rerun()
 
     # 3. Standard Chat Input
     input_ph = "Please give feedback on the last answer..." if st.session_state["feedback_pending"] else "Ask your question here..."
