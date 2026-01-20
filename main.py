@@ -44,22 +44,26 @@ system_instr = AI_CONFIG["system_instruction"]
 # --- Helper Functions ---
 def handle_feedback(understood: bool, selected_label, system_instruction):
     interaction = "UNDERSTOOD_FEEDBACK" if understood else "CLARIFICATION_REQUESTED"
-    last_ai_reply = st.session_state["messages"][-1]["content"]
 
-    save_to_firebase(st.session_state["current_user"], selected_label, "N/A", last_ai_reply, interaction)
+    # Safety check to ensure messages exist
+    if st.session_state["messages"]:
+        last_ai_reply = st.session_state["messages"][-1]["content"]
 
-    if not understood:
-        clarification_prompt = f"I don't understand the previous explanation: '{last_ai_reply}'. Please break it down further."
-        st.session_state["messages"].append({"role": "user", "content": clarification_prompt})
+        # Log the feedback event to Firebase
+        save_to_firebase(st.session_state["current_user"], selected_label, "N/A", last_ai_reply, interaction)
 
-        ai_manager = AIManager(selected_label)
-        ai_reply = ai_manager.get_response(st.session_state["messages"], system_instruction)
+        if not understood:
+            # 1. Create the clarification prompt
+            clarification_prompt = f"I don't understand the previous explanation: '{last_ai_reply}'. Please break it down further."
 
-        save_to_firebase(st.session_state["current_user"], selected_label, clarification_prompt, ai_reply, "CLARIFICATION_RESPONSE")
-        st.session_state["messages"].append({"role": "assistant", "content": ai_reply})
-        st.session_state["feedback_pending"] = True
-    else:
-        st.session_state["feedback_pending"] = False
+            # 2. Add to history so the AI can see it
+            st.session_state["messages"].append({"role": "user", "content": clarification_prompt})
+
+            # 3. SET THE TRIGGER - This tells the main loop to run the AI
+            st.session_state["trigger_clarification"] = True
+            st.session_state["feedback_pending"] = False
+        else:
+            st.session_state["feedback_pending"] = False
 
 # --- UI Header ---
 st.image("combined_logo.jpg")
