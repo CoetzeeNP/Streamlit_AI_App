@@ -50,13 +50,14 @@ def handle_feedback(understood: bool, selected_label, system_instruction):
 
     if not understood:
         clarification_prompt = f"I don't understand the previous explanation: '{last_ai_reply}'. Please break it down further."
-
-        # FIX: Append to state IMMEDIATELY so it shows up in history on the next render
         st.session_state["messages"].append({"role": "user", "content": clarification_prompt})
 
-        # We set a flag to tell the main loop to generate a response for this new message
-        st.session_state["feedback_pending"] = False
-        st.session_state["generating_clarification"] = True
+        ai_manager = AIManager(selected_label)
+        ai_reply = ai_manager.get_response(st.session_state["messages"], system_instruction)
+
+        save_to_firebase(st.session_state["current_user"], selected_label, clarification_prompt, ai_reply, "CLARIFICATION_RESPONSE")
+        st.session_state["messages"].append({"role": "assistant", "content": ai_reply})
+        st.session_state["feedback_pending"] = True
     else:
         st.session_state["feedback_pending"] = False
 
@@ -107,57 +108,39 @@ else:
                 st.markdown(f"**{label}:**")
                 st.markdown(msg["content"])
 
-    # 2. Check for "I need help!" Trigger
-    # This runs if the user clicked the feedback button
-    if st.session_state.get("trigger_clarification", False):
-        with st.chat_message("assistant"):
-            with st.container(border=True):
-                st.markdown("**Business Planning Assistant:**")
-                ai_manager = AIManager(selected_label)
-                full_response = st.write_stream(
-                    ai_manager.get_response_stream(st.session_state["messages"], system_instr)
-                )
-
-        # Save and reset trigger
-        save_to_firebase(st.session_state["current_user"], selected_label, "Clarification", full_response,
-                         "CLARIFICATION")
-        st.session_state["messages"].append({"role": "assistant", "content": full_response})
-        st.session_state["trigger_clarification"] = False  # Reset the flag
-        st.session_state["feedback_pending"] = True
-        st.rerun()
-
-    # 3. Standard Chat Input
-    input_ph = "Please give feedback on the last answer..." if st.session_state[
-        "feedback_pending"] else "Ask your question here..."
-
+    # 2. Chat Input
+    input_ph = "Please give feedback on the last answer..." if st.session_state["feedback_pending"] else "Ask your question here..."
     if prompt := st.chat_input(input_ph, disabled=st.session_state["feedback_pending"]):
-        # Add to history and render immediately
+
+        # Add to history BEFORE the AI starts
         st.session_state["messages"].append({"role": "user", "content": prompt})
+
+        # Manually show the user message so it appears while AI is thinking
         with st.chat_message("user"):
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
             with st.container(border=True):
                 st.markdown("**Business Planning Assistant:**")
-                ai_manager = AIManager(selected_label)
-                full_response = st.write_stream(
-                    ai_manager.get_response_stream(st.session_state["messages"], system_instr)
-                )
+                with st.spinner("Thinking..."):
+                    ai_manager = AIManager(selected_label)
 
-        # Finalize State
+                    full_response = st.write_stream(
+                        ai_manager.get_response_stream(st.session_state["messages"], system_instr)
+                    )
+
+        # --- STEP 4: Finalize State ---
         save_to_firebase(st.session_state["current_user"], selected_label, prompt, full_response, "INITIAL_QUERY")
         st.session_state["messages"].append({"role": "assistant", "content": full_response})
         st.session_state["feedback_pending"] = True
         st.rerun()
 
-    # 4. Feedback Section
+    # 3. Feedback Section
     if st.session_state["feedback_pending"]:
         st.divider()
         st.info("Did you understand the assistant's response?")
         c1, c2 = st.columns(2)
         with c1:
-            st.button("I understand!", on_click=handle_feedback, args=(True, selected_label, system_instr),
-                      use_container_width=True)
+            st.button("I understand!", on_click=handle_feedback, args=(True, selected_label, system_instr), use_container_width=True)
         with c2:
-            st.button("I need some help!", on_click=handle_feedback, args=(False, selected_label, system_instr),
-                      use_container_width=True)
+            st.button("I need some help!", on_click=handle_feedback, args=(False, selected_label, system_instr), use_container_width=True)
