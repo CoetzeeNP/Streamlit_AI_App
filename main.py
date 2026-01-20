@@ -43,27 +43,25 @@ system_instr = AI_CONFIG["system_instruction"]
 
 # --- Helper Functions ---
 def handle_feedback(understood: bool, selected_label, system_instruction):
+    # Standard logging logic
     interaction = "UNDERSTOOD_FEEDBACK" if understood else "CLARIFICATION_REQUESTED"
+    last_ai_reply = st.session_state["messages"][-1]["content"]
+    save_to_firebase(st.session_state["current_user"], selected_label, "N/A", last_ai_reply, interaction)
 
-    # Safety check to ensure messages exist
-    if st.session_state["messages"]:
-        last_ai_reply = st.session_state["messages"][-1]["content"]
+    if not understood:
+        clarification_prompt = f"I don't understand the previous explanation. Please break it down further."
 
-        # Log the feedback event to Firebase
-        save_to_firebase(st.session_state["current_user"], selected_label, "N/A", last_ai_reply, interaction)
+        # 1. Append the user message to history
+        st.session_state["messages"].append({"role": "user", "content": clarification_prompt})
 
-        if not understood:
-            # 1. Create the clarification prompt
-            clarification_prompt = f"I don't understand the previous explanation: '{last_ai_reply}'. Please break it down further."
+        # 2. Set the flags
+        st.session_state["trigger_clarification"] = True
+        st.session_state["feedback_pending"] = False
 
-            # 2. Add to history so the AI can see it
-            st.session_state["messages"].append({"role": "user", "content": clarification_prompt})
-
-            # 3. SET THE TRIGGER - This tells the main loop to run the AI
-            st.session_state["trigger_clarification"] = True
-            st.session_state["feedback_pending"] = False
-        else:
-            st.session_state["feedback_pending"] = False
+        # 3. Explicit rerun to catch the trigger
+        st.rerun()
+    else:
+        st.session_state["feedback_pending"] = False
 
 # --- UI Header ---
 st.image("combined_logo.jpg")
@@ -112,34 +110,48 @@ else:
                 st.markdown(f"**{label}:**")
                 st.markdown(msg["content"])
 
-    # 2. Chat Input
+    # 2. NEW: The Clarification Trigger Catch
+    # This block runs if handle_feedback set the trigger_clarification flag
+    if st.session_state.get("trigger_clarification", False):
+        with st.chat_message("assistant"):
+            with st.container(border=True):
+                st.markdown("**Business Planning Assistant:**")
+                ai_manager = AIManager(selected_label)
+                # Stream the response for the clarification prompt
+                full_response = st.write_stream(
+                    ai_manager.get_response_stream(st.session_state["messages"], system_instr)
+                )
+
+        # Finalize Clarification State
+        save_to_firebase(st.session_state["current_user"], selected_label, "Clarification Request", full_response, "CLARIFICATION_RESPONSE")
+        st.session_state["messages"].append({"role": "assistant", "content": full_response})
+        st.session_state["trigger_clarification"] = False  # Reset the trigger
+        st.session_state["feedback_pending"] = True       # Show feedback buttons again
+        st.rerun()
+
+    # 3. Standard Chat Input
     input_ph = "Please give feedback on the last answer..." if st.session_state["feedback_pending"] else "Ask your question here..."
     if prompt := st.chat_input(input_ph, disabled=st.session_state["feedback_pending"]):
 
-        # Add to history BEFORE the AI starts
         st.session_state["messages"].append({"role": "user", "content": prompt})
 
-        # Manually show the user message so it appears while AI is thinking
         with st.chat_message("user"):
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
             with st.container(border=True):
                 st.markdown("**Business Planning Assistant:**")
-                with st.spinner("Thinking..."):
-                    ai_manager = AIManager(selected_label)
+                ai_manager = AIManager(selected_label)
+                full_response = st.write_stream(
+                    ai_manager.get_response_stream(st.session_state["messages"], system_instr)
+                )
 
-                    full_response = st.write_stream(
-                        ai_manager.get_response_stream(st.session_state["messages"], system_instr)
-                    )
-
-        # --- STEP 4: Finalize State ---
         save_to_firebase(st.session_state["current_user"], selected_label, prompt, full_response, "INITIAL_QUERY")
         st.session_state["messages"].append({"role": "assistant", "content": full_response})
         st.session_state["feedback_pending"] = True
         st.rerun()
 
-    # 3. Feedback Section
+    # 4. Feedback Section
     if st.session_state["feedback_pending"]:
         st.divider()
         st.info("Did you understand the assistant's response?")
