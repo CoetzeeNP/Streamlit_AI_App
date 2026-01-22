@@ -120,10 +120,39 @@ with st.sidebar:
         user_logs = db_ref.child("logs").child(clean_user_id).get()
 
         if user_logs:
-            options = sorted(user_logs.keys(), reverse=True)
-            sel_log = st.selectbox("Select History", options)
-            st.write(user_logs[sel_log])
-            if st.button("Load & Continue", use_container_width=True):
+            # 1. Create a mapping of formatted strings to original keys
+            # This allows the UI to show "Jan 22, 2026 - 14:30" while keeping the data key hidden
+            log_options = {}
+
+            for key in sorted(user_logs.keys(), reverse=True):
+                try:
+                    # Adjust the parsing based on how your 'key' is stored:
+                    # If key is a Unix timestamp: datetime.fromtimestamp(float(key))
+                    # If key is an ISO string: datetime.fromisoformat(key)
+                    dt_obj = datetime.fromisoformat(str(key))
+                    formatted_date = dt_obj.strftime("%b %d, %Y — %I:%M %p")
+                except Exception:
+                    formatted_date = str(key)  # Fallback
+
+                log_options[formatted_date] = key
+
+            # 2. Display the UI components
+            st.subheader("Recent History")
+
+            # Use the formatted labels for the selectbox
+            selected_label = st.selectbox("Select a previous session:", options=log_options.keys())
+
+            # Retrieve the actual log data using the mapping
+            actual_key = log_options[selected_label]
+            current_log_data = user_logs[actual_key]
+
+            # 3. Preview the content in a clean container
+            with st.container(border=True):
+                st.caption(f"Previewing: {selected_label}")
+                st.write(current_log_data)
+
+            if st.button("Load & Continue Session", type="primary", use_container_width=True):
+                # Perform your loading logic here (e.g., updating st.session_state)
                 st.rerun()
 
         # 3. CLEAR CHAT (Important: resets session_id)
