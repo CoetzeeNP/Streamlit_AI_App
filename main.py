@@ -157,10 +157,17 @@ else:
                 )
 
         # Finalize Clarification State
-        save_to_firebase(st.session_state["current_user"], selected_label, "Clarification Request", full_response, "CLARIFICATION_RESPONSE")
+        save_to_firebase(
+            st.session_state["current_user"],
+            selected_label,
+            st.session_state["messages"],  # Correct: passing the list
+            "CLARIFICATION_RESPONSE",  # Correct: the interaction type
+            st.session_state["session_id"]  # Correct: the missing session_id
+        )
+
         st.session_state["messages"].append({"role": "assistant", "content": full_response})
-        st.session_state["trigger_clarification"] = False  # Reset the trigger
-        st.session_state["feedback_pending"] = True       # Show feedback buttons again
+        st.session_state["trigger_clarification"] = False
+        st.session_state["feedback_pending"] = True
         st.rerun()
 
     # 3. Standard Chat Input
@@ -180,7 +187,13 @@ else:
                     ai_manager.get_response_stream(st.session_state["messages"], system_instr)
                 )
 
-        save_to_firebase(st.session_state["current_user"], selected_label, prompt, full_response, "INITIAL_QUERY", messages=st.session_state["messages"])
+        save_to_firebase(
+            user_id=st.session_state["current_user"],
+            model_name=selected_label,
+            messages=st.session_state["messages"],  # Pass the history list
+            interaction_type="INITIAL_QUERY",
+            session_id=st.session_state["session_id"]
+        )
         st.session_state["messages"].append({"role": "assistant", "content": full_response})
         st.session_state["feedback_pending"] = True
         st.rerun()

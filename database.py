@@ -17,10 +17,9 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
     db_ref = get_firebase_connection()
     if db_ref:
         clean_user_id = str(user_id).replace(".", "_")
-        # Use the session_id as the key so we update the SAME record
         db_ref.child("logs").child(clean_user_id).child(session_id).set({
             "model_name": model_name,
-            "transcript": messages,  # Saves the entire list of dictionaries
+            "transcript": messages,  # This should be the st.session_state["messages"] list
             "interaction_type": interaction_type,
             "last_updated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
