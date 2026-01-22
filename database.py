@@ -4,9 +4,6 @@ from datetime import datetime
 import streamlit as st
 import datetime
 
-if "session_id" not in st.session_state:
-    st.session_state["session_id"] = datetime.now().strftime("%Y%m%d_%H%M%S")
-
 @st.cache_resource
 def get_firebase_connection():
     if not firebase_admin._apps:
