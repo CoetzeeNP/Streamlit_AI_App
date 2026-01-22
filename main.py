@@ -122,7 +122,7 @@ with st.sidebar:
         if user_logs:
             options = sorted(user_logs.keys(), reverse=True)
             sel_log = st.selectbox("Select History", options)
-            if st.button("Load & Continue", use_container_width=True):
+            if sel_log is options:
                 st.rerun()
 
         # 3. CLEAR CHAT (Important: resets session_id)
