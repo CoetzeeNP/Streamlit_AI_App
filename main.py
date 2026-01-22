@@ -2,6 +2,7 @@ import streamlit as st
 from ai_strategy import AIManager
 from database import save_to_firebase, get_firebase_connection, load_selected_chat
 from streamlit_cookies_controller import CookieController
+import datetime
 
 # 1. Initialize Cookie Controller before Page Config
 controller = CookieController()
@@ -181,7 +182,7 @@ else:
                     ai_manager.get_response_stream(st.session_state["messages"], system_instr)
                 )
 
-        save_to_firebase(st.session_state["current_user"], selected_label, prompt, full_response, "INITIAL_QUERY")
+        save_to_firebase(st.session_state["current_user"], selected_label, prompt, full_response, "INITIAL_QUERY", messages=st.session_state["messages"])
         st.session_state["messages"].append({"role": "assistant", "content": full_response})
         st.session_state["feedback_pending"] = True
         st.rerun()
