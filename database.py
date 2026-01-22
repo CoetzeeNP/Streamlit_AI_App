@@ -14,7 +14,7 @@ def get_firebase_connection():
         firebase_admin.initialize_app(cred, {'databaseURL': db_url})
     return db.reference("/")
 
-def save_to_firebase(user_id, model_name, prompt_, full_response, interaction_type):
+def save_to_firebase(user_id, model_name, prompt_, full_response, interaction_type, messages):
     db_ref = get_firebase_connection()
     if db_ref:
         clean_user_id = str(user_id).replace(".", "_")
@@ -23,22 +23,18 @@ def save_to_firebase(user_id, model_name, prompt_, full_response, interaction_ty
             "model_name": model_name,
             "prompt": prompt_,
             "response": full_response,
+            "transcript": messages,
             "interaction_type": interaction_type,
             "full_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
 
+
 def load_selected_chat(user_id, session_key):
-    """Fetches a specific chat history from Firebase and loads it into session state."""
     db_ref = get_firebase_connection()
     clean_user_id = str(user_id).replace(".", "_")
-    # Fetch all messages for that specific timestamp
     chat_data = db_ref.child("logs").child(clean_user_id).child(session_key).get()
 
-    if chat_data:
-        # Note: Your current logging only saves the LAST prompt/response pair per key.
-        # To support full history 'resumption', you'd need to save the whole list.
-        # For now, this adds the historical pair to the current view:
-        st.session_state["messages"] = [
-            {"role": "user", "content": chat_data.get("prompt", "")},
-            {"role": "assistant", "content": chat_data.get("response", "")}
-        ]
+    if chat_data and "transcript" in chat_data:
+        # Overwrite current session messages with the historical transcript
+        st.session_state["messages"] = chat_data["transcript"]
+        st.success("Chat history loaded!")
