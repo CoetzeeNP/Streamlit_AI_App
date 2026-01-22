@@ -152,7 +152,7 @@ with st.sidebar:
                 st.write(current_log_data)
 
             if st.button("Load & Continue Session", type="primary", use_container_width=True):
-                # Perform your loading logic here (e.g., updating st.session_state)
+                load_selected_chat(st.session_state['current_user'], sel_log)
                 st.rerun()
 
         # 3. CLEAR CHAT (Important: resets session_id)
