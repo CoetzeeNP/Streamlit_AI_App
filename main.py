@@ -120,10 +120,38 @@ with st.sidebar:
         user_logs = db_ref.child("logs").child(clean_user_id).get()
 
         if user_logs:
-            options = sorted(user_logs.keys(), reverse=True)
-            sel_log = st.selectbox("Select History", options)
-            if st.button("Load & Continue", use_container_width=True):
+            # 1. Create a "Pretty Name" mapping
+            # This keeps the UI clean while preserving the original keys for the backend
+            display_options = {}
+
+            for raw_key in sorted(user_logs.keys(), reverse=True):
+                try:
+                    # Assuming raw_key is an ISO string or timestamp
+                    dt_obj = datetime.fromisoformat(str(raw_key))
+                    # Format: Jan 22, 2026 - 03:18 PM
+                    clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
+                except ValueError:
+                    clean_date = str(raw_key)
+
+                display_options[clean_date] = raw_key
+
+            # 2. Enhanced UI Layout
+            st.subheader("📜 Chat History")
+
+            selected_display = st.selectbox(
+                "Choose a previous session:",
+                options=display_options.keys(),
+                index=0,
+                help="Sessions are sorted from newest to oldest"
+            )
+
+            # Get the actual key from our map
+            sel_log = display_options[selected_display]
+
+            # 3. Action Button
+            if st.button("🔄 Load & Continue Session", type="primary", use_container_width=True):
                 load_selected_chat(st.session_state['current_user'], sel_log)
+                st.success(f"Loaded session from {selected_display}")
                 st.rerun()
 
         # 3. CLEAR CHAT (Important: resets session_id)
