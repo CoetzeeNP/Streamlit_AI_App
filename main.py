@@ -158,6 +158,7 @@ with st.sidebar:
 
             # 4. Action Button
             if st.button("🔄 Load & Continue Session", type="primary", use_container_width=True):
+                st.session_state["messages"] = []
                 load_selected_chat(st.session_state['current_user'], sel_log_key)
                 st.rerun()
 
