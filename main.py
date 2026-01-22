@@ -5,7 +5,7 @@ from streamlit_cookies_controller import CookieController
 import datetime
 
 if "session_id" not in st.session_state:
-    st.session_state["session_id"] = datetime.now().strftime("%Y%m%d_%H%M%S")
+    st.session_state["session_id"] = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
 # 1. Initialize Cookie Controller before Page Config
 controller = CookieController()
