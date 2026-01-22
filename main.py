@@ -97,41 +97,30 @@ with st.sidebar:
 
         # --- Download Button ---
         if st.session_state["messages"]:
-            chat_text = convert_messages_to_text()
-            st.download_button(
-                label="📥 Download Chat (.txt)",
-                data=chat_text,
-                file_name=f"chat_log_{datetime.now().strftime('%Y%m%d')}.txt",
-                mime="text/plain",
-                use_container_width=True
-            )
+            chat_text = "Business Planning Assistant Transcript\n" + "=" * 30
+            for m in st.session_state["messages"]:
+                chat_text += f"\n{m['role'].upper()}: {m['content']}\n"
 
-        # --- Load History Section ---
+            st.download_button("📥 Download Current Chat", chat_text, file_name="chat.txt", use_container_width=True)
+
+            # 2. LOAD PREVIOUS CHATS
         st.markdown("---")
-        st.subheader("Previous Chats")
+        st.subheader("History")
         db_ref = get_firebase_connection()
         clean_user_id = str(st.session_state['current_user']).replace(".", "_")
-
-        # Get list of previous session keys (timestamps)
         user_logs = db_ref.child("logs").child(clean_user_id).get()
 
         if user_logs:
-            # Show keys in descending order (newest first)
-            log_keys = sorted(user_logs.keys(), reverse=True)
-            selected_session = st.selectbox("Select a past session", log_keys)
-
-            if st.button("Load Session", use_container_width=True):
-                load_selected_chat(st.session_state['current_user'], selected_session)
+            options = sorted(user_logs.keys(), reverse=True)
+            sel_log = st.selectbox("Select History", options)
+            if st.button("Load & Continue", use_container_width=True):
+                load_selected_chat(st.session_state['current_user'], sel_log)
                 st.rerun()
-        else:
-            st.info("No history found.")
 
-        st.markdown("---")
-        # ... rest of your logout/clear buttons ...
-
-        st.markdown("---")
-        if st.button("Clear Chat", use_container_width=True, type="secondary"):
-            st.session_state["messages"], st.session_state["feedback_pending"] = [], False
+        # 3. CLEAR CHAT (Important: resets session_id)
+        if st.button("New Chat", use_container_width=True):
+            st.session_state["messages"] = []
+            st.session_state["session_id"] = datetime.now().strftime("%Y%m%d_%H%M%S")
             st.rerun()
 
 # --- Main Logic ---

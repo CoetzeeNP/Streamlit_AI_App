@@ -4,6 +4,9 @@ from datetime import datetime
 import streamlit as st
 import datetime
 
+if "session_id" not in st.session_state:
+    st.session_state["session_id"] = datetime.now().strftime("%Y%m%d_%H%M%S")
+
 @st.cache_resource
 def get_firebase_connection():
     if not firebase_admin._apps:
@@ -14,18 +17,16 @@ def get_firebase_connection():
         firebase_admin.initialize_app(cred, {'databaseURL': db_url})
     return db.reference("/")
 
-def save_to_firebase(user_id, model_name, prompt_, full_response, interaction_type, messages):
+def save_to_firebase(user_id, model_name, messages, interaction_type, session_id):
     db_ref = get_firebase_connection()
     if db_ref:
         clean_user_id = str(user_id).replace(".", "_")
-        timestamp_key = datetime.now().strftime("%Y%m%d_%H%M%S")
-        db_ref.child("logs").child(clean_user_id).child(timestamp_key).set({
+        # Use the session_id as the key so we update the SAME record
+        db_ref.child("logs").child(clean_user_id).child(session_id).set({
             "model_name": model_name,
-            "prompt": prompt_,
-            "response": full_response,
-            "transcript": messages,
+            "transcript": messages,  # Saves the entire list of dictionaries
             "interaction_type": interaction_type,
-            "full_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
 
 
@@ -35,6 +36,6 @@ def load_selected_chat(user_id, session_key):
     chat_data = db_ref.child("logs").child(clean_user_id).child(session_key).get()
 
     if chat_data and "transcript" in chat_data:
-        # Overwrite current session messages with the historical transcript
         st.session_state["messages"] = chat_data["transcript"]
-        st.success("Chat history loaded!")
+        st.session_state["session_id"] = session_key  # Keep using this ID to update history
+        st.success(f"Loaded session: {session_key}")
