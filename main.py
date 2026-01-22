@@ -1,6 +1,6 @@
 import streamlit as st
 from ai_strategy import AIManager
-from database import save_to_firebase
+from database import save_to_firebase, get_firebase_connection
 from streamlit_cookies_controller import CookieController
 
 # 1. Initialize Cookie Controller before Page Config
