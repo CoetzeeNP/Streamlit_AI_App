@@ -21,7 +21,7 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
             "model_name": model_name,
             "transcript": messages,  # This should be the st.session_state["messages"] list
             "interaction_type": interaction_type,
-            "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "last_updated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
 
 
