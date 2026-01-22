@@ -41,6 +41,15 @@ AI_CONFIG = {
 selected_label = AI_CONFIG["active_model"]
 system_instr = AI_CONFIG["system_instruction"]
 
+def convert_messages_to_text():
+    """Converts session messages to a readable format for download."""
+    transcript = "Chat History - Business Planning Assistant\n" + "=" * 40 + "\n"
+    for msg in st.session_state["messages"]:
+        role = "User" if msg["role"] == "user" else "Assistant"
+        transcript += f"\n[{role}]: {msg['content']}\n"
+    return transcript
+
+
 # --- Helper Functions ---
 def handle_feedback(understood: bool, selected_label, system_instruction):
     # Standard logging logic
@@ -84,14 +93,40 @@ with st.sidebar:
                 st.error("Invalid ID")
     else:
         st.write(f"**Logged in as:** {st.session_state['current_user']}")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Logout", use_container_width=True):
-                controller.remove('student_auth_id') # Delete cookie
-                st.session_state.clear()
+
+        # --- Download Button ---
+        if st.session_state["messages"]:
+            chat_text = convert_messages_to_text()
+            st.download_button(
+                label="📥 Download Chat (.txt)",
+                data=chat_text,
+                file_name=f"chat_log_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
+
+        # --- Load History Section ---
+        st.markdown("---")
+        st.subheader("Previous Chats")
+        db_ref = get_firebase_connection()
+        clean_user_id = str(st.session_state['current_user']).replace(".", "_")
+
+        # Get list of previous session keys (timestamps)
+        user_logs = db_ref.child("logs").child(clean_user_id).get()
+
+        if user_logs:
+            # Show keys in descending order (newest first)
+            log_keys = sorted(user_logs.keys(), reverse=True)
+            selected_session = st.selectbox("Select a past session", log_keys)
+
+            if st.button("Load Session", use_container_width=True):
+                load_selected_chat(st.session_state['current_user'], selected_session)
                 st.rerun()
-        with col2:
-            st.link_button("Feedback", "https://forms.office.com/...", use_container_width=True)
+        else:
+            st.info("No history found.")
+
+        st.markdown("---")
+        # ... rest of your logout/clear buttons ...
 
         st.markdown("---")
         if st.button("Clear Chat", use_container_width=True, type="secondary"):
