@@ -1,6 +1,6 @@
 import firebase_admin
 from firebase_admin import credentials, db
-import datetime
+from datetime import datetime
 import streamlit as st
 
 @st.cache_resource
