@@ -59,7 +59,13 @@ def handle_feedback(understood: bool, selected_label, system_instruction):
     # Standard logging logic
     interaction = "UNDERSTOOD_FEEDBACK" if understood else "CLARIFICATION_REQUESTED"
     last_ai_reply = st.session_state["messages"][-1]["content"]
-    save_to_firebase(st.session_state["current_user"], selected_label, "N/A", last_ai_reply, interaction)
+    save_to_firebase(
+        st.session_state["current_user"],
+        selected_label,
+        st.session_state["messages"],  # Pass the whole list
+        "CHAT_UPDATE",
+        st.session_state["session_id"],  # Pass the fixed session_id
+    )
 
     if not understood:
         clarification_prompt = f"I don't understand the previous explanation. Please break it down further."
