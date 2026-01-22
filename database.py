@@ -22,7 +22,7 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
             "model_name": model_name,
             "transcript": messages,  # Saves the entire list of dictionaries
             "interaction_type": interaction_type,
-            "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "last_updated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
 
 
