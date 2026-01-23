@@ -56,24 +56,23 @@ def convert_messages_to_text():
 
 
 # --- Helper Functions ---
-def handle_feedback(understood: bool, selected_label):  # Removed system_instruction
-    interaction_type = "UNDERSTOOD_FEEDBACK" if understood else "CLARIFICATION_REQUESTED"
-
-    # Save only what is necessary for the log
-    save_to_firebase(
-        st.session_state["current_user"],
-        selected_label,
-        st.session_state["messages"],
-        interaction_type,
-        st.session_state["session_id"],
-    )
-
-    if not understood:
-        # We only set the flag; the main loop handles the AI call using 'system_instr'
+def handle_feedback(understood: bool, selected_label):
+    if understood:
+        # Log successful interaction
+        save_to_firebase(
+            st.session_state["current_user"],
+            selected_label,
+            st.session_state["messages"],
+            "UNDERSTOOD_FEEDBACK",
+            st.session_state["session_id"],
+        )
+    else:
+        # 1. Append the prompt for the LLM
         st.session_state["messages"].append({
             "role": "user",
             "content": "I don't understand the previous explanation. Please break it down further."
         })
+        # 2. Set the flag to trigger the AI in the main loop
         st.session_state["trigger_clarification"] = True
 
     st.session_state["feedback_pending"] = False
