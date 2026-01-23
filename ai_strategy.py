@@ -50,7 +50,7 @@ class OpenAIStrategy(AIStrategy):
         response = oa_client.chat.completions.create(
             model=model_id,
             messages=oa_messages,
-            temperature=0.7,
+            temperature=1,
             stream=True
         )
         for chunk in response:
