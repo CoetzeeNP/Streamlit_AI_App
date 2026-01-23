@@ -99,6 +99,20 @@ with st.sidebar:
     else:
         st.write(f"**Logged in as:** {st.session_state['current_user']}")
 
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("Logout", use_container_width=True):
+                st.session_state.clear()
+                st.rerun()
+
+        with col2:
+            # Your new MS Form button
+            st.link_button("Feedback",
+                           "https://forms.office.com/Pages/ResponsePage.aspx?id=uRv8jg-5SEq_bLoGhhk7gBvkZQsfRhhErcivaQmEhItUNENSMEJNQTM3UzQ1RlBMSFBUVTFKTFg2VS4u",
+                           use_container_width=True)
+
+
         # --- Download Button ---
         if st.session_state["messages"]:
             chat_text = "Business Planning Assistant Transcript\n" + "=" * 30
