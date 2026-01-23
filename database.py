@@ -13,18 +13,22 @@ def get_firebase_connection():
         firebase_admin.initialize_app(cred, {'databaseURL': db_url})
     return db.reference("/")
 
+
 def save_to_firebase(user_id, model_name, messages, interaction_type, session_id):
     db_ref = get_firebase_connection()
     if db_ref:
         clean_user_id = str(user_id).replace(".", "_")
-        db_ref.child("logs").child(clean_user_id).child(session_id).set({
+        # Reference the specific session ID
+        session_ref = db_ref.child("logs").child(clean_user_id).child(session_id)
+
+        session_ref.update({
             "model_name": model_name,
-            "transcript": messages,  # This should be the st.session_state["messages"] list
-            "interaction_type": interaction_type,
+            "transcript": messages,  # The list grows, but it updates the SAME key
+            "last_interaction_type": interaction_type,
             "last_updated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
 
-
+# This stays the same and works better with Option 1
 def load_selected_chat(user_id, session_key):
     db_ref = get_firebase_connection()
     clean_user_id = str(user_id).replace(".", "_")
@@ -32,5 +36,4 @@ def load_selected_chat(user_id, session_key):
 
     if chat_data and "transcript" in chat_data:
         st.session_state["messages"] = chat_data["transcript"]
-        st.session_state["session_id"] = session_key  # Keep using this ID to update history
-        st.success(f"Loaded session: {session_key}")
+        st.session_state["session_id"] = session_key
