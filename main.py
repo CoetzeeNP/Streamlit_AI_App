@@ -3,6 +3,7 @@ from ai_strategy import AIManager
 from database import save_to_firebase, get_firebase_connection, load_selected_chat
 from streamlit_cookies_controller import CookieController
 from datetime import datetime
+import json
 
 if "session_id" not in st.session_state:
     st.session_state["session_id"] = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -141,20 +142,29 @@ with st.sidebar:
             sel_log_key = display_options[selected_display]
             log_content = user_logs[sel_log_key]
 
-            # 3. Preview Section
-            # We use a container with a border to make the preview stand out
             with st.container(border=True):
                 st.caption("🔍 Preview of selected session")
 
-                # If your log_content is a list of messages (standard for chatbots)
-                if isinstance(log_content, list):
-                    for msg in log_content[:3]:  # Show first 3 messages as a teaser
-                        role = msg.get("role", "user").capitalize()
-                        content = msg.get("content", "")
-                        st.markdown(**f"{role}**: {content[:200]}...")
+                if isinstance(log_content, list) and len(log_content) > 0:
+                    # Get the last message in the list for context, or [0] for the start
+                    last_msg = log_content[-1]
+
+                    # Handle cases where messages are dicts or JSON strings
+                    if isinstance(last_msg, str):
+                        try:
+                            last_msg = json.loads(last_msg)
+                        except:
+                            pass
+
+                    if isinstance(last_msg, dict):
+                        role = "User" if last_msg.get("role") == "user" else "AI"
+                        content = last_msg.get("content", "")
+                        st.markdown(f"**{role}**: {content[:150]}...")
+                    else:
+                        st.text(str(last_msg)[:150] + "...")
                 else:
-                    # If log_content is just a string
-                    st.text(str(log_content)[:500] + "...")
+                    # If log_content is a single string or dict
+                    st.info("No message preview available.")
 
             # 4. Action Button
             if st.button("🔄 Load & Continue Session", type="primary", use_container_width=True):
