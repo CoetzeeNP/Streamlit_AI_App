@@ -70,7 +70,8 @@ def handle_feedback(understood: bool, selected_label):
         # 1. Append the prompt for the LLM
         st.session_state["messages"].append({
             "role": "user",
-            "content": "I don't understand the previous explanation. Please break it down further."
+            "content": "I don't understand the previous explanation. Please break it down further.",
+            "interaction_type": "Clarification requested"
         })
         # 2. Set the flag to trigger the AI in the main loop
         st.session_state["trigger_clarification"] = True
