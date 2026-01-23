@@ -25,7 +25,7 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
 
         db_ref.child("logs").child(clean_user_id).child(session_id).update({
             "model_name": model_name,
-            "transcript": messages,  # The tagged list is saved here
+            "transcript": messages,
             "last_updated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
 

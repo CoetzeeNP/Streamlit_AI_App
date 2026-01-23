@@ -70,8 +70,7 @@ def handle_feedback(understood: bool, selected_label):
         # 1. Append the prompt for the LLM
         st.session_state["messages"].append({
             "role": "user",
-            "content": "I don't understand the previous explanation. Please break it down further.",
-            "interaction_type": "Clarification requested"
+            "content": "I don't understand the previous explanation. Please break it down further."
         })
         # 2. Set the flag to trigger the AI in the main loop
         st.session_state["trigger_clarification"] = True
@@ -110,7 +109,6 @@ with st.sidebar:
 
             # 2. LOAD PREVIOUS CHATS
         st.markdown("---")
-        st.subheader("History")
         db_ref = get_firebase_connection()
         clean_user_id = str(st.session_state['current_user']).replace(".", "_")
         user_logs = db_ref.child("logs").child(clean_user_id).get()
@@ -127,7 +125,7 @@ with st.sidebar:
                 display_options[clean_date] = raw_key
 
             # 2. Selection UI
-            st.subheader("📜 Chat History")
+            st.subheader("Chat History")
             selected_display = st.selectbox(
                 "Choose a previous session:",
                 options=list(display_options.keys())
@@ -196,7 +194,6 @@ else:
             with st.container(border=True):
                 st.markdown("**Business Planning Assistant:**")
                 ai_manager = AIManager(selected_label)
-                # Stream the response for the clarification prompt
                 full_response = st.write_stream(
                     ai_manager.get_response_stream(st.session_state["messages"], system_instr)
                 )
