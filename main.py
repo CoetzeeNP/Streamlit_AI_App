@@ -56,30 +56,27 @@ def convert_messages_to_text():
 
 
 # --- Helper Functions ---
-def handle_feedback(understood: bool, selected_label):
-    # 1. Define the dynamic interaction type based on the button clicked
+def handle_feedback(understood: bool, selected_label):  # Removed system_instruction
     interaction_type = "UNDERSTOOD_FEEDBACK" if understood else "CLARIFICATION_REQUESTED"
 
-    # 2. Save to Firebase using the variable 'interaction_type'
-    # (Replacing your hardcoded "interaction" string)
+    # Save only what is necessary for the log
     save_to_firebase(
         st.session_state["current_user"],
         selected_label,
         st.session_state["messages"],
-        interaction_type,  # Use the variable here!
+        interaction_type,
         st.session_state["session_id"],
     )
 
     if not understood:
-        clarification_prompt = "I don't understand the previous explanation. Please break it down further."
-        st.session_state["messages"].append({"role": "user", "content": clarification_prompt})
+        # We only set the flag; the main loop handles the AI call using 'system_instr'
+        st.session_state["messages"].append({
+            "role": "user",
+            "content": "I don't understand the previous explanation. Please break it down further."
+        })
         st.session_state["trigger_clarification"] = True
-        st.session_state["feedback_pending"] = False
-        # No rerun needed here usually as on_click triggers a rerun naturally,
-        # but st.rerun() ensures the 'trigger_clarification' block executes immediately.
-        st.rerun()
-    else:
-        st.session_state["feedback_pending"] = False
+
+    st.session_state["feedback_pending"] = False
 
 # --- UI Header ---
 st.image("combined_logo.jpg")
@@ -248,6 +245,6 @@ else:
         st.info("Did you understand the assistant's response?")
         c1, c2 = st.columns(2)
         with c1:
-            st.button("I understand!", on_click=handle_feedback, args=(True, selected_label, system_instr), use_container_width=True)
+            st.button("I understand!", on_click=handle_feedback, args=(True, selected_label), use_container_width=True)
         with c2:
-            st.button("I need some help!", on_click=handle_feedback, args=(False, selected_label, system_instr), use_container_width=True)
+            st.button("I need some help!", on_click=handle_feedback, args=(False, selected_label), use_container_width=True)
