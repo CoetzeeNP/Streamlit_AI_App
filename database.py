@@ -18,13 +18,14 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
     db_ref = get_firebase_connection()
     if db_ref:
         clean_user_id = str(user_id).replace(".", "_")
-        # Reference the specific session ID
-        session_ref = db_ref.child("logs").child(clean_user_id).child(session_id)
 
-        session_ref.update({
+        # Tag the most recent message with the interaction context
+        if messages:
+            messages[-1]["interaction"] = interaction_type
+
+        db_ref.child("logs").child(clean_user_id).child(session_id).update({
             "model_name": model_name,
-            "transcript": messages,  # The list grows, but it updates the SAME key
-            "last_interaction_type": interaction_type,
+            "transcript": messages,  # The tagged list is saved here
             "last_updated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
 

@@ -177,12 +177,16 @@ with st.sidebar:
 if not st.session_state["authenticated"]:
     st.warning("Please login with an authorized Student ID in the sidebar.")
 else:
-    # 1. Display History
     for msg in st.session_state["messages"]:
-        label = st.session_state["current_user"] if msg["role"] == "user" else "Business Planning Assistant"
+        role_label = st.session_state["current_user"] if msg["role"] == "user" else "Assistant"
+
         with st.chat_message(msg["role"]):
+            # Show the interaction type as a small caption if it exists
+            if "interaction" in msg:
+                st.caption(f"Action: {msg['interaction'].replace('_', ' ')}")
+
             with st.container(border=True):
-                st.markdown(f"**{label}:**")
+                st.markdown(f"**{role_label}:**")
                 st.markdown(msg["content"])
 
     # 2. NEW: The Clarification Trigger Catch
