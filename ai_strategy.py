@@ -67,7 +67,7 @@ class AIManager:
         ]
         self.strategies = {
             "gemini-3-pro-preview": (GeminiStrategy(), "gemini-3-pro-preview"),
-            "ChatGPT 5.2": (OpenAIStrategy(), "gpt-5.2-thinking")
+            "ChatGPT 5.2": (OpenAIStrategy(), "gpt-5")
         }
 
     def get_response_stream(self, chat_history, system_instruction):
