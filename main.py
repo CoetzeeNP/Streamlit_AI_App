@@ -56,29 +56,27 @@ def convert_messages_to_text():
 
 
 # --- Helper Functions ---
-def handle_feedback(understood: bool, selected_label, system_instruction):
-    # Standard logging logic
-    interaction = "UNDERSTOOD_FEEDBACK" if understood else "CLARIFICATION_REQUESTED"
-    last_ai_reply = st.session_state["messages"][-1]["content"]
+def handle_feedback(understood: bool, selected_label):
+    # 1. Define the dynamic interaction type based on the button clicked
+    interaction_type = "UNDERSTOOD_FEEDBACK" if understood else "CLARIFICATION_REQUESTED"
+
+    # 2. Save to Firebase using the variable 'interaction_type'
+    # (Replacing your hardcoded "interaction" string)
     save_to_firebase(
         st.session_state["current_user"],
         selected_label,
-        st.session_state["messages"],  # Pass the whole list
-        "CHAT_UPDATE",
-        st.session_state["session_id"],  # Pass the fixed session_id
+        st.session_state["messages"],
+        interaction_type,  # Use the variable here!
+        st.session_state["session_id"],
     )
 
     if not understood:
-        clarification_prompt = f"I don't understand the previous explanation. Please break it down further."
-
-        # 1. Append the user message to history
+        clarification_prompt = "I don't understand the previous explanation. Please break it down further."
         st.session_state["messages"].append({"role": "user", "content": clarification_prompt})
-
-        # 2. Set the flags
         st.session_state["trigger_clarification"] = True
         st.session_state["feedback_pending"] = False
-
-        # 3. Explicit rerun to catch the trigger
+        # No rerun needed here usually as on_click triggers a rerun naturally,
+        # but st.rerun() ensures the 'trigger_clarification' block executes immediately.
         st.rerun()
     else:
         st.session_state["feedback_pending"] = False
