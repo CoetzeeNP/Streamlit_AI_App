@@ -131,7 +131,6 @@ with st.sidebar:
             # 2. LOAD PREVIOUS CHATS
         st.markdown("---")
         # --- OPTIMIZED LOAD PREVIOUS CHATS ---
-        st.markdown("---")
         clean_user_id = str(st.session_state['current_user']).replace(".", "_")
 
         # Step A: Shallow fetch (Keys only)
@@ -147,15 +146,22 @@ with st.sidebar:
             user_sessions_keys = None
 
         if user_sessions_keys:
-            # Build the list of dates for the selectbox
             display_options = {}
+            # Sort keys so newest is on top
             for raw_key in sorted(user_sessions_keys.keys(), reverse=True):
                 try:
+                    # Try parsing the standard format
                     dt_obj = datetime.strptime(raw_key, "%Y%m%d_%H%M%S")
                     clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
-                except:
-                    clean_date = str(raw_key)
+                except (ValueError, TypeError):
+                    # Fallback if the key format is different (e.g., manual entries)
+                    clean_date = f"Session: {raw_key}"
+
                 display_options[clean_date] = raw_key
+
+            st.subheader("Chat History")
+            selected_display = st.selectbox("Choose a previous session:", options=list(display_options.keys()))
+            sel_log_key = display_options[selected_display]
 
             st.subheader("Chat History")
             selected_display = st.selectbox("Choose a previous session:", options=list(display_options.keys()))
