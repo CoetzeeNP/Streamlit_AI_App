@@ -135,7 +135,8 @@ with st.sidebar:
         clean_user_id = str(st.session_state['current_user']).replace(".", "_")
 
         # Step A: Shallow fetch (Keys only)
-        shallow_url = f"{firebase_db_url}/logs/{clean_user_id}.json?shallow=true"
+        base_url = st.secrets["firebase_db_url"]
+        shallow_url = f"{base_url}/logs/{clean_user_id}.json?shallow=true"
 
         try:
             import requests
