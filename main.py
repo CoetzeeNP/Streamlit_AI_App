@@ -150,24 +150,21 @@ with st.sidebar:
             # Sort keys so newest is on top
             for raw_key in sorted(user_sessions_keys.keys(), reverse=True):
                 try:
+                    # Try parsing the standard format
                     dt_obj = datetime.strptime(raw_key, "%Y%m%d_%H%M%S")
                     clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
                 except (ValueError, TypeError):
+                    # Fallback if the key format is different (e.g., manual entries)
                     clean_date = f"Session: {raw_key}"
 
                 display_options[clean_date] = raw_key
 
             st.subheader("Chat History")
-
-            # --- ONLY ONE SELECTBOX HERE ---
-            selected_display = st.selectbox(
-                "Choose a previous session:",
-                options=list(display_options.keys()),
-                key="history_selector"  # Adding a key is also good practice
-            )
+            selected_display = st.selectbox("Choose a previous session:", options=list(display_options.keys()))
             sel_log_key = display_options[selected_display]
 
             # Step B: Cached Targeted Fetch (Only the selected chat)
+            log_content = get_cached_session(st.session_state['current_user'], sel_log_key)
 
             with st.container(border=True):
                 st.caption("🔍 Preview: First Exchange")
