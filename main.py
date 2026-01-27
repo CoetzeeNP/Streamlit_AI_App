@@ -139,38 +139,40 @@ with st.sidebar:
 
             # 2. Selection UI
             st.subheader("Chat History")
-            selected_display = st.selectbox(
-                "Choose a previous session:",
-                options=list(display_options.keys())
-            )
 
-            # Get the actual key and the data associated with it
-            sel_log_key = display_options[selected_display]
-            log_content = user_logs[sel_log_key]
+            # 1. Fetch ONLY the keys (timestamps) first to populate the selectbox
+            # Use .get(shallow=True) if using a REST wrapper,
+            # or just pull the keys list if using the SDK efficiently.
+            all_session_keys = sorted(db_ref.child("logs").child(clean_user_id).shallow().get().keys(), reverse=True)
 
-            with st.container(border=True):
-                st.caption("🔍 Preview of selected session")
+            if all_session_keys:
+                display_options = {}
+                for raw_key in all_session_keys:
+                    try:
+                        dt_obj = datetime.fromisoformat(str(raw_key))
+                        clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
+                    except:
+                        clean_date = str(raw_key)
+                    display_options[clean_date] = raw_key
 
-                if isinstance(log_content, list) and len(log_content) > 0:
-                    # Get the last message in the list for context, or [0] for the start
-                    last_msg = log_content[-1]
+                selected_display = st.selectbox("Choose a previous session:", options=list(display_options.keys()))
+                sel_log_key = display_options[selected_display]
 
-                    # Handle cases where messages are dicts or JSON strings
-                    if isinstance(last_msg, str):
-                        try:
-                            last_msg = json.loads(last_msg)
-                        except:
-                            pass
+                # 2. ONLY NOW fetch the content for the specific selected session
+                # We use a limit_to_first(2) to only get the first User and AI message
+                preview_data = db_ref.child("logs").child(clean_user_id).child(
+                    sel_log_key).order_by_key().limit_to_first(2).get()
 
-                    if isinstance(last_msg, dict):
-                        role = "User" if last_msg.get("role") == "user" else "AI"
-                        content = last_msg.get("content", "")
-                        st.markdown(f"**{role}**: {content[:150]}...")
+                with st.container(border=True):
+                    st.caption("🔍 Preview of selected session")
+                    if preview_data:
+                        # preview_data will be a list or dict of the first two messages
+                        for msg in preview_data:
+                            role = "User" if msg.get("role") == "user" else "AI"
+                            content = msg.get("content", "")
+                            st.markdown(f"**{role}**: {content[:100]}...")
                     else:
-                        st.text(str(last_msg)[:150] + "...")
-                else:
-                    # If log_content is a single string or dict
-                    st.info("No message preview available.")
+                        st.info("No messages found.")
 
             # 4. Action Button
             if st.button("🔄 Load & Continue Session", type="primary", use_container_width=True):
