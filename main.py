@@ -163,10 +163,6 @@ with st.sidebar:
             selected_display = st.selectbox("Choose a previous session:", options=list(display_options.keys()))
             sel_log_key = display_options[selected_display]
 
-            st.subheader("Chat History")
-            selected_display = st.selectbox("Choose a previous session:", options=list(display_options.keys()))
-            sel_log_key = display_options[selected_display]
-
             # Step B: Cached Targeted Fetch (Only the selected chat)
             log_content = get_cached_session(st.session_state['current_user'], sel_log_key)
 
