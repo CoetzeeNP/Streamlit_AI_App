@@ -151,23 +151,35 @@ with st.sidebar:
             # Step B: Get session content from cache or DB
             log_content = get_cached_session(st.session_state['current_user'], sel_log_key)
 
-            # Standardize data format
+            # Standardize data format (Firebase can return lists or dicts)
+            messages_list = []
             if isinstance(log_content, dict):
-                log_content = [log_content[k] for k in
-                               sorted(log_content.keys(), key=lambda x: int(x) if x.isdigit() else x)]
+                # Sort by key to maintain conversation order
+                sorted_keys = sorted(log_content.keys(), key=lambda x: int(x) if x.isdigit() else x)
+                messages_list = [log_content[k] for k in sorted_keys]
+            elif isinstance(log_content, list):
+                messages_list = log_content
 
             # Step C: Show Preview
             with st.container(border=True):
                 st.caption("🔍 Preview: First Exchange")
-                if log_content and len(log_content) > 0:
-                    p1 = log_content[0].get("content", "")
-                    st.markdown(f"**Q:** {p1[:80]}...")
-                    if len(log_content) >= 2:
-                        r1 = log_content[1].get("content", "")
-                        st.divider()
-                        st.markdown(f"**A:** {r1[:80]}...")
+
+                # Filter for actual chat messages (ignore metadata if any)
+                chat_only = [m for m in messages_list if isinstance(m, dict) and "content" in m]
+
+                if chat_only:
+                    # Show first User message
+                    user_msg = next((m["content"] for m in chat_only if m.get("role") == "user"),
+                                    "No user message found.")
+                    st.markdown(f"**Q:** {user_msg[:80]}...")
+
+                    # Show first Assistant message
+                    st.divider()
+                    ast_msg = next((m["content"] for m in chat_only if m.get("role") == "assistant"),
+                                   "No response yet.")
+                    st.markdown(f"**A:** {ast_msg[:80]}...")
                 else:
-                    st.info("No preview available.")
+                    st.info("No message history found in this session.")
 
             if st.button("🔄 Load & Continue", type="primary", use_container_width=True):
                 st.session_state["messages"] = []
