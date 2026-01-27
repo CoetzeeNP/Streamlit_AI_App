@@ -3,7 +3,15 @@ from ai_strategy import AIManager
 from database import save_to_firebase, get_firebase_connection, load_selected_chat
 from streamlit_cookies_controller import CookieController
 from datetime import datetime
+import requests
 import json
+
+@st.cache_data(show_spinner="Fetching session details...")
+def get_cached_session(user_id, session_id):
+    """Fetches a specific session's data once and stores it in memory."""
+    db_ref = get_firebase_connection()
+    clean_id = str(user_id).replace(".", "_")
+    return db_ref.child("logs").child(clean_id).child(session_id).get()
 
 if "session_id" not in st.session_state:
     st.session_state["session_id"] = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -120,63 +128,64 @@ with st.sidebar:
 
             st.download_button("📥 Download Current Chat", chat_text, file_name="chat.txt", use_container_width=True)
 
-            # 2. LOAD PREVIOUS CHATS
-        st.markdown("---")
-        db_ref = get_firebase_connection()
-        clean_user_id = str(st.session_state['current_user']).replace(".", "_")
-        user_logs = db_ref.child("logs").child(clean_user_id).get()
+            # ... inside sidebar ...
+            st.markdown("---")
+            clean_user_id = str(st.session_state['current_user']).replace(".", "_")
 
-        if user_logs:
-            # 1. Create the mapping for clean timestamps
-            display_options = {}
-            for raw_key in sorted(user_logs.keys(), reverse=True):
-                try:
-                    dt_obj = datetime.fromisoformat(str(raw_key))
-                    clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
-                except ValueError:
-                    clean_date = str(raw_key)
-                display_options[clean_date] = raw_key
+            # Step A: Shallow fetch (Keys only)
+            # This avoids downloading every message just to show the list of dates
+            base_url = st.secrets["firebase_db_url"]  # Ensure this key exists in secrets.toml
+            shallow_url = f"{base_url}/logs/{clean_user_id}.json?shallow=true"
 
-            # 2. Selection UI
-            st.subheader("Chat History")
-            selected_display = st.selectbox(
-                "Choose a previous session:",
-                options=list(display_options.keys())
-            )
+            user_sessions_keys = None
+            try:
+                response = requests.get(shallow_url)
+                user_sessions_keys = response.json()
+            except Exception as e:
+                st.error(f"Error fetching history: {e}")
 
-            # Get the actual key and the data associated with it
-            sel_log_key = display_options[selected_display]
-            log_content = user_logs[sel_log_key]
+            if user_sessions_keys:
+                # Build display options mapping
+                display_options = {}
+                for raw_key in sorted(user_sessions_keys.keys(), reverse=True):
+                    try:
+                        # Match the format used in st.session_state["session_id"]
+                        dt_obj = datetime.strptime(raw_key, "%Y%m%d_%H%M%S")
+                        clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
+                    except:
+                        clean_date = str(raw_key)
+                    display_options[clean_date] = raw_key
 
-            with st.container(border=True):
-                st.caption("🔍 Preview of selected session")
+                st.subheader("Chat History")
+                selected_display = st.selectbox("Choose a previous session:", options=list(display_options.keys()))
+                sel_log_key = display_options[selected_display]
 
-                if isinstance(log_content, list) and len(log_content) > 0:
-                    # Get the last message in the list for context, or [0] for the start
-                    last_msg = log_content[-1]
+                # Step B: Targeted Fetch with Caching
+                # We only call the database for the specific session ID selected
+                log_content = get_cached_session(st.session_state['current_user'], sel_log_key)
 
-                    # Handle cases where messages are dicts or JSON strings
-                    if isinstance(last_msg, str):
-                        try:
-                            last_msg = json.loads(last_msg)
-                        except:
-                            pass
+                # Step C: Standardize and Preview
+                if isinstance(log_content, dict):
+                    log_content = [log_content[k] for k in
+                                   sorted(log_content.keys(), key=lambda x: int(x) if x.isdigit() else x)]
 
-                    if isinstance(last_msg, dict):
-                        role = "User" if last_msg.get("role") == "user" else "AI"
-                        content = last_msg.get("content", "")
-                        st.markdown(f"**{role}**: {content[:150]}...")
+                with st.container(border=True):
+                    st.caption("🔍 Preview: First Exchange")
+                    if log_content and len(log_content) > 0:
+                        p1 = log_content[0].get("content", "")
+                        st.markdown(f"**Q:** {p1[:80]}...")
+                        if len(log_content) >= 2:
+                            r1 = log_content[1].get("content", "")
+                            st.divider()
+                            st.markdown(f"**A:** {r1[:80]}...")
                     else:
-                        st.text(str(last_msg)[:150] + "...")
-                else:
-                    # If log_content is a single string or dict
-                    st.info("No message preview available.")
+                        st.info("No preview available.")
 
-            # 4. Action Button
-            if st.button("🔄 Load & Continue Session", type="primary", use_container_width=True):
-                st.session_state["messages"] = []
-                load_selected_chat(st.session_state['current_user'], sel_log_key)
-                st.rerun()
+                if st.button("🔄 Load & Continue Session", type="primary", use_container_width=True):
+                    st.session_state["messages"] = []
+                    st.session_state["session_id"] = sel_log_key
+                    load_selected_chat(st.session_state['current_user'], sel_log_key)
+                    st.rerun()
 
         # 3. CLEAR CHAT (Important: resets session_id)
         if st.button("New Chat", use_container_width=True):
