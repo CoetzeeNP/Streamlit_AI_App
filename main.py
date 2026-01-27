@@ -46,6 +46,14 @@ AI_CONFIG = {
 selected_label = AI_CONFIG["active_model"]
 system_instr = AI_CONFIG["system_instruction"]
 
+@st.cache_data(show_spinner="Fetching preview...")
+def get_cached_session(user_id, session_id):
+    """Fetches a specific session's data once and stores it in memory."""
+    db_ref = get_firebase_connection()
+    # Replace dots in user_id for Firebase compatibility
+    clean_id = str(user_id).replace(".", "_")
+    return db_ref.child("logs").child(clean_id).child(session_id).get()
+
 def convert_messages_to_text():
     """Converts session messages to a readable format for download."""
     transcript = "Chat History - Business Planning Assistant\n" + "=" * 40 + "\n"
@@ -98,7 +106,6 @@ with st.sidebar:
                 st.error("Invalid ID")
     else:
         st.write(f"**Logged in as:** {st.session_state['current_user']}")
-
         col1, col2 = st.columns(2)
 
         with col1:
@@ -123,59 +130,61 @@ with st.sidebar:
 
             # 2. LOAD PREVIOUS CHATS
         st.markdown("---")
-        db_ref = get_firebase_connection()
+        # --- OPTIMIZED LOAD PREVIOUS CHATS ---
+        st.markdown("---")
         clean_user_id = str(st.session_state['current_user']).replace(".", "_")
-        user_logs = db_ref.child("logs").child(clean_user_id).get()
 
-        if user_logs:
-            # 1. Create the mapping for clean timestamps
+        # Step A: Shallow fetch (Keys only)
+        base_url = st.secrets["firebase_url"]
+        shallow_url = f"{base_url}/logs/{clean_user_id}.json?shallow=true"
+
+        try:
+            import requests
+
+            response = requests.get(shallow_url)
+            user_sessions_keys = response.json()
+        except Exception:
+            user_sessions_keys = None
+
+        if user_sessions_keys:
+            # Build the list of dates for the selectbox
             display_options = {}
-            for raw_key in sorted(user_logs.keys(), reverse=True):
+            for raw_key in sorted(user_sessions_keys.keys(), reverse=True):
                 try:
-                    dt_obj = datetime.fromisoformat(str(raw_key))
+                    dt_obj = datetime.strptime(raw_key, "%Y%m%d_%H%M%S")
                     clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
-                except ValueError:
+                except:
                     clean_date = str(raw_key)
                 display_options[clean_date] = raw_key
 
-            # 2. Selection UI
             st.subheader("Chat History")
-            selected_display = st.selectbox(
-                "Choose a previous session:",
-                options=list(display_options.keys())
-            )
-
-            # Get the actual key and the data associated with it
+            selected_display = st.selectbox("Choose a previous session:", options=list(display_options.keys()))
             sel_log_key = display_options[selected_display]
-            log_content = user_logs[sel_log_key]
+
+            # Step B: Cached Targeted Fetch (Only the selected chat)
+            log_content = get_cached_session(st.session_state['current_user'], sel_log_key)
 
             with st.container(border=True):
-                st.caption("🔍 Preview of selected session")
+                st.caption("🔍 Preview: First Exchange")
 
-                if isinstance(log_content, list) and len(log_content) > 0:
-                    # Get the last message in the list for context, or [0] for the start
-                    last_msg = log_content[-1]
+                if isinstance(log_content, list) and len(log_content) >= 2:
+                    # Display first prompt and first response
+                    p1 = log_content[0].get("content", "")
+                    r1 = log_content[1].get("content", "")
 
-                    # Handle cases where messages are dicts or JSON strings
-                    if isinstance(last_msg, str):
-                        try:
-                            last_msg = json.loads(last_msg)
-                        except:
-                            pass
-
-                    if isinstance(last_msg, dict):
-                        role = "User" if last_msg.get("role") == "user" else "AI"
-                        content = last_msg.get("content", "")
-                        st.markdown(f"**{role}**: {content[:150]}...")
-                    else:
-                        st.text(str(last_msg)[:150] + "...")
+                    st.markdown(f"**Q:** {p1[:80]}...")
+                    st.divider()
+                    st.markdown(f"**A:** {r1[:80]}...")
+                elif isinstance(log_content, list) and len(log_content) == 1:
+                    st.markdown(f"**Q:** {log_content[0].get('content', '')[:80]}...")
                 else:
-                    # If log_content is a single string or dict
-                    st.info("No message preview available.")
+                    st.info("No preview available.")
 
-            # 4. Action Button
+            # Step C: Action Button
             if st.button("🔄 Load & Continue Session", type="primary", use_container_width=True):
                 st.session_state["messages"] = []
+                # Update your session_id to the one being loaded
+                st.session_state["session_id"] = sel_log_key
                 load_selected_chat(st.session_state['current_user'], sel_log_key)
                 st.rerun()
 
