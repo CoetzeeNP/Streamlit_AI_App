@@ -146,46 +146,43 @@ with st.sidebar:
             user_sessions_keys = None
 
         if user_sessions_keys:
-            display_options = {}
-            # Sort keys so newest is on top
-            for raw_key in sorted(user_sessions_keys.keys(), reverse=True):
-                try:
-                    # Try parsing the standard format
-                    dt_obj = datetime.strptime(raw_key, "%Y%m%d_%H%M%S")
-                    clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
-                except (ValueError, TypeError):
-                    # Fallback if the key format is different (e.g., manual entries)
-                    clean_date = f"Session: {raw_key}"
-
-                display_options[clean_date] = raw_key
+            # 1. Setup the selection
+            display_options = {
+                (datetime.strptime(k, "%Y%m%d_%H%M%S").strftime("%b %d, %Y - %I:%M %p")
+                 if "_" in k else k): k
+                for k in sorted(user_sessions_keys.keys(), reverse=True)
+            }
 
             st.subheader("Chat History")
             selected_display = st.selectbox("Choose a previous session:", options=list(display_options.keys()))
             sel_log_key = display_options[selected_display]
 
-            # Step B: Cached Targeted Fetch (Only the selected chat)
+            # 2. Fetch the data (This defines log_content)
             log_content = get_cached_session(st.session_state['current_user'], sel_log_key)
 
+            # 3. Standardize the data (Convert Firebase Dict to List)
+            if isinstance(log_content, dict):
+                log_content = [log_content[k] for k in
+                               sorted(log_content.keys(), key=lambda x: int(x) if x.isdigit() else x)]
+
+            # 4. Display the Preview
             with st.container(border=True):
                 st.caption("🔍 Preview: First Exchange")
 
-                if isinstance(log_content, list) and len(log_content) >= 2:
-                    # Display first prompt and first response
+                # Check if log_content exists and has data
+                if log_content and len(log_content) > 0:
                     p1 = log_content[0].get("content", "")
-                    r1 = log_content[1].get("content", "")
-
                     st.markdown(f"**Q:** {p1[:80]}...")
-                    st.divider()
-                    st.markdown(f"**A:** {r1[:80]}...")
-                elif isinstance(log_content, list) and len(log_content) == 1:
-                    st.markdown(f"**Q:** {log_content[0].get('content', '')[:80]}...")
+
+                    if len(log_content) >= 2:
+                        r1 = log_content[1].get("content", "")
+                        st.divider()
+                        st.markdown(f"**A:** {r1[:80]}...")
                 else:
                     st.info("No preview available.")
 
-            # Step C: Action Button
+            # 5. Action Button
             if st.button("🔄 Load & Continue Session", type="primary", use_container_width=True):
-                st.session_state["messages"] = []
-                # Update your session_id to the one being loaded
                 st.session_state["session_id"] = sel_log_key
                 load_selected_chat(st.session_state['current_user'], sel_log_key)
                 st.rerun()
