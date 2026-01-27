@@ -46,14 +46,6 @@ AI_CONFIG = {
 selected_label = AI_CONFIG["active_model"]
 system_instr = AI_CONFIG["system_instruction"]
 
-@st.cache_data(show_spinner="Fetching preview...")
-def get_cached_session(user_id, session_id):
-    """Fetches a specific session's data once and stores it in memory."""
-    db_ref = get_firebase_connection()
-    # Replace dots in user_id for Firebase compatibility
-    clean_id = str(user_id).replace(".", "_")
-    return db_ref.child("logs").child(clean_id).child(session_id).get()
-
 def convert_messages_to_text():
     """Converts session messages to a readable format for download."""
     transcript = "Chat History - Business Planning Assistant\n" + "=" * 40 + "\n"
@@ -130,60 +122,59 @@ with st.sidebar:
 
             # 2. LOAD PREVIOUS CHATS
         st.markdown("---")
-        # --- OPTIMIZED LOAD PREVIOUS CHATS ---
+        db_ref = get_firebase_connection()
         clean_user_id = str(st.session_state['current_user']).replace(".", "_")
+        user_logs = db_ref.child("logs").child(clean_user_id).get()
 
-        # Step A: Shallow fetch (Keys only)
-        base_url = st.secrets["firebase_db_url"]
-        shallow_url = f"{base_url}/logs/{clean_user_id}.json?shallow=true"
+        if user_logs:
+            # 1. Create the mapping for clean timestamps
+            display_options = {}
+            for raw_key in sorted(user_logs.keys(), reverse=True):
+                try:
+                    dt_obj = datetime.fromisoformat(str(raw_key))
+                    clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
+                except ValueError:
+                    clean_date = str(raw_key)
+                display_options[clean_date] = raw_key
 
-        try:
-            import requests
-
-            response = requests.get(shallow_url)
-            user_sessions_keys = response.json()
-        except Exception:
-            user_sessions_keys = None
-
-        if user_sessions_keys:
-            # 1. Setup the selection
-            display_options = {
-                (datetime.strptime(k, "%Y%m%d_%H%M%S").strftime("%b %d, %Y - %I:%M %p")
-                 if "_" in k else k): k
-                for k in sorted(user_sessions_keys.keys(), reverse=True)
-            }
-
+            # 2. Selection UI
             st.subheader("Chat History")
-            selected_display = st.selectbox("Choose a previous session:", options=list(display_options.keys()))
+            selected_display = st.selectbox(
+                "Choose a previous session:",
+                options=list(display_options.keys())
+            )
+
+            # Get the actual key and the data associated with it
             sel_log_key = display_options[selected_display]
+            log_content = user_logs[sel_log_key]
 
-            # 2. Fetch the data (This defines log_content)
-            log_content = get_cached_session(st.session_state['current_user'], sel_log_key)
-
-            # 3. Standardize the data (Convert Firebase Dict to List)
-            if isinstance(log_content, dict):
-                log_content = [log_content[k] for k in
-                               sorted(log_content.keys(), key=lambda x: int(x) if x.isdigit() else x)]
-
-            # 4. Display the Preview
             with st.container(border=True):
-                st.caption("🔍 Preview: First Exchange")
+                st.caption("🔍 Preview of selected session")
 
-                # Check if log_content exists and has data
-                if log_content and len(log_content) > 0:
-                    p1 = log_content[0].get("content", "")
-                    st.markdown(f"**Q:** {p1[:80]}...")
+                if isinstance(log_content, list) and len(log_content) > 0:
+                    # Get the last message in the list for context, or [0] for the start
+                    last_msg = log_content[-1]
 
-                    if len(log_content) >= 2:
-                        r1 = log_content[1].get("content", "")
-                        st.divider()
-                        st.markdown(f"**A:** {r1[:80]}...")
+                    # Handle cases where messages are dicts or JSON strings
+                    if isinstance(last_msg, str):
+                        try:
+                            last_msg = json.loads(last_msg)
+                        except:
+                            pass
+
+                    if isinstance(last_msg, dict):
+                        role = "User" if last_msg.get("role") == "user" else "AI"
+                        content = last_msg.get("content", "")
+                        st.markdown(f"**{role}**: {content[:150]}...")
+                    else:
+                        st.text(str(last_msg)[:150] + "...")
                 else:
-                    st.info("No preview available.")
+                    # If log_content is a single string or dict
+                    st.info("No message preview available.")
 
-            # 5. Action Button
+            # 4. Action Button
             if st.button("🔄 Load & Continue Session", type="primary", use_container_width=True):
-                st.session_state["session_id"] = sel_log_key
+                st.session_state["messages"] = []
                 load_selected_chat(st.session_state['current_user'], sel_log_key)
                 st.rerun()
 
