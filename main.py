@@ -176,9 +176,18 @@ with st.sidebar:
 
                     if messages:
                         for msg in messages:
-                            role = "User" if msg.get("role") == "user" else "Assistant"
-                            content = msg.get("content", "No content")
-                            st.markdown(f"**{role}**: {content[:100]}...")
+                            # 1. If the message is a string, convert it to a dictionary
+                            if isinstance(msg, str):
+                                try:
+                                    msg = json.loads(msg)
+                                except json.JSONDecodeError:
+                                    continue
+
+                                    # 2. Now safely access the role and content
+                            if isinstance(msg, dict):
+                                role = "User" if msg.get("role") == "user" else "Assistant"
+                                content = msg.get("content", "No content")
+                                st.markdown(f"**{role}**: {content[:100]}...")
                     else:
                         st.info("No messages found in this session.")
 
