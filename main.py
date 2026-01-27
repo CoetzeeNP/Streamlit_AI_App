@@ -137,42 +137,50 @@ with st.sidebar:
                     clean_date = str(raw_key)
                 display_options[clean_date] = raw_key
 
-            # 2. Selection UI
             st.subheader("Chat History")
 
-            # 1. Fetch ONLY the keys (timestamps) first to populate the selectbox
-            # Use .get(shallow=True) if using a REST wrapper,
-            # or just pull the keys list if using the SDK efficiently.
-            all_session_keys = sorted(db_ref.child("logs").child(clean_user_id).shallow().get().keys(), reverse=True)
+            # 1. Get ONLY the keys (session IDs) to avoid downloading all content
+            # Note: Firebase Admin SDK doesn't have a native 'shallow' get.
+            # To be truly efficient, we just fetch the keys under the user's log node.
+            all_logs_dict = db_ref.child("logs").child(clean_user_id).get(shallow=True)
 
-            if all_session_keys:
-                display_options = {}
-                for raw_key in all_session_keys:
-                    try:
-                        dt_obj = datetime.fromisoformat(str(raw_key))
-                        clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
-                    except:
-                        clean_date = str(raw_key)
-                    display_options[clean_date] = raw_key
+            if all_logs_dict:
+                # Get keys and sort them (newest first)
+                all_session_keys = sorted(all_logs_dict.keys(), reverse=True)
+
+                display_options = {
+                    datetime.fromisoformat(k).strftime("%b %d, %Y - %I:%M %p")
+                    if "T" in k else k: k
+                    for k in all_session_keys
+                }
 
                 selected_display = st.selectbox("Choose a previous session:", options=list(display_options.keys()))
                 sel_log_key = display_options[selected_display]
 
-                # 2. ONLY NOW fetch the content for the specific selected session
-                # We use a limit_to_first(2) to only get the first User and AI message
-                preview_data = db_ref.child("logs").child(clean_user_id).child(
+                # 2. FETCH PREVIEW: Only get the first 2 messages of the SELECTED session
+                # This prevents downloading the whole conversation
+                preview_query = db_ref.child("logs").child(clean_user_id).child(
                     sel_log_key).order_by_key().limit_to_first(2).get()
 
                 with st.container(border=True):
                     st.caption("🔍 Preview of selected session")
-                    if preview_data:
-                        # preview_data will be a list or dict of the first two messages
-                        for msg in preview_data:
-                            role = "User" if msg.get("role") == "user" else "AI"
-                            content = msg.get("content", "")
+
+                    if isinstance(preview_query, list):
+                        # Firebase sometimes returns a list if keys are numeric/sequential
+                        messages = [m for m in preview_query if m is not None]
+                    elif isinstance(preview_query, dict):
+                        # Usually returns a dict of {unique_id: {role:..., content:...}}
+                        messages = list(preview_query.values())
+                    else:
+                        messages = []
+
+                    if messages:
+                        for msg in messages:
+                            role = "User" if msg.get("role") == "user" else "Assistant"
+                            content = msg.get("content", "No content")
                             st.markdown(f"**{role}**: {content[:100]}...")
                     else:
-                        st.info("No messages found.")
+                        st.info("No messages found in this session.")
 
             # 4. Action Button
             if st.button("🔄 Load & Continue Session", type="primary", use_container_width=True):
