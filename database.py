@@ -46,7 +46,7 @@ def load_selected_chat(user_id, session_key):
 
         # 2. Generate a NEW session ID
         # Using datetime.now() requires 'from datetime import datetime'
-        new_session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        new_session_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
         # 3. Prepare the data for the new session
         new_session_data = {
