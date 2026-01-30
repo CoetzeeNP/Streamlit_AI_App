@@ -29,11 +29,36 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
         })
 
 # This stays the same and works better with Option 1
-def load_selected_chat(user_id, session_key):
+def load_and_copy_to_new_session(user_id, old_session_key):
     db_ref = get_firebase_connection()
     clean_user_id = str(user_id).replace(".", "_")
-    chat_data = db_ref.child("logs").child(clean_user_id).child(session_key).get()
 
-    if chat_data and "transcript" in chat_data:
-        st.session_state["messages"] = chat_data["transcript"]
-        st.session_state["session_id"] = session_key
+    # 1. Fetch only the transcript from the OLD session
+    old_transcript_ref = db_ref.child("logs").child(clean_user_id).child(old_session_key).child("transcript")
+    transcript = old_transcript_ref.get()
+
+    if transcript:
+        # Normalize the transcript (remove None values if they exist)
+        clean_messages = [m for m in transcript if m is not None] if isinstance(transcript, list) else list(
+            transcript.values())
+
+        # 2. Generate a NEW session ID for today/now
+        new_session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # 3. Prepare the data for the new session
+        new_session_data = {
+            "transcript": clean_messages,
+            "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "model_name": "ThunderbAIrd"  # Or your current model config
+        }
+
+        # 4. Save to Firebase under the new key
+        db_ref.child("logs").child(clean_user_id).child(new_session_id).set(new_session_data)
+
+        # 5. Update Streamlit state to use the NEW session
+        st.session_state["messages"] = clean_messages
+        st.session_state["session_id"] = new_session_id
+
+        st.success(f"Session branched to {new_session_id}")
+    else:
+        st.error("Could not find transcript to copy.")
