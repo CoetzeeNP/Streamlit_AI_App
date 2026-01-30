@@ -190,17 +190,10 @@ with st.sidebar:
                         st.info("Start chatting to see a preview here.")
 
             # 4. Action Button
-            # 4. Action Button
             if st.button("🔄 Load & Continue Session", type="primary", use_container_width=True):
-                # Check if the selected log is already the active one
-                current_active_id = st.session_state.get("session_id")
-
-                if sel_log_key == current_active_id:
-                    st.toast("This session is already active!", icon="ℹ️")
-                else:
-                    # Only proceed if it's a different session
-                    load_selected_chat(st.session_state['current_user'], sel_log_key)
-                    st.rerun()
+                st.session_state["messages"] = []
+                load_selected_chat(st.session_state['current_user'], sel_log_key)
+                st.rerun()
 
         # 3. CLEAR CHAT (Important: resets session_id)
         if st.button("New Chat", use_container_width=True):
