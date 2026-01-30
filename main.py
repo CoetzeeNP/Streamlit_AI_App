@@ -139,20 +139,26 @@ with st.sidebar:
 
             st.subheader("Chat History")
 
-            # 1. Get ONLY the keys (session IDs) to avoid downloading all content
-            # Note: Firebase Admin SDK doesn't have a native 'shallow' get.
-            # To be truly efficient, we just fetch the keys under the user's log node.
             all_logs_dict = db_ref.child("logs").child(clean_user_id).get(shallow=True)
 
             if all_logs_dict:
-                # Get keys and sort them (newest first)
                 all_session_keys = sorted(all_logs_dict.keys(), reverse=True)
 
-                display_options = {
-                    datetime.fromisoformat(k).strftime("%b %d, %Y - %I:%M %p")
-                    if "T" in k else k: k
-                    for k in all_session_keys
-                }
+                display_options = {}
+                for k in all_session_keys:
+                    try:
+                        # Handle your specific format: 20260130_115629
+                        dt_obj = datetime.strptime(k, "%Y%m%d_%H%M%S")
+                        clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
+                    except ValueError:
+                        # Fallback for ISO format or unexpected strings
+                        try:
+                            dt_obj = datetime.fromisoformat(k.replace("Z", ""))
+                            clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
+                        except:
+                            clean_date = k
+
+                    display_options[clean_date] = k
 
                 selected_display = st.selectbox("Choose a previous session:", options=list(display_options.keys()))
                 sel_log_key = display_options[selected_display]
