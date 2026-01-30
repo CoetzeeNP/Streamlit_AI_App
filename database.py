@@ -25,7 +25,7 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
         db_ref.child("logs").child(clean_user_id).child(session_id).update({
             "model_name": model_name,
             "transcript": messages,
-            "last_updated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
 
 # This stays the same and works better with Option 1
@@ -46,7 +46,7 @@ def load_selected_chat(user_id, session_key):
 
         # 2. Generate a NEW session ID
         # Using datetime.now() requires 'from datetime import datetime'
-        new_session_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        new_session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         # 3. Prepare the data for the new session
         new_session_data = {
