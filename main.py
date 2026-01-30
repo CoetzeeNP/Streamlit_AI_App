@@ -175,12 +175,11 @@ with st.sidebar:
                             msgs = [m for m in preview_messages if m is not None]
 
                         for msg in msgs:
-                            role_icon = "👤" if msg.get("role") == "user" else "🤖"
                             role_name = "User" if msg.get("role") == "user" else "ThunderbAIrd"
                             content = msg.get("content", "No content")
 
                             # Use a cleaner display for the preview
-                            st.markdown(f"{role_icon} **{role_name}**: {content[:120]}...")
+                            st.markdown(f"**{role_name}**: {content[:120]}...")
                     else:
                         st.info("Start chatting to see a preview here.")
 
