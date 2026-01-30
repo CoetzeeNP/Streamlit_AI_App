@@ -29,7 +29,7 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
         })
 
 # This stays the same and works better with Option 1
-def load_and_copy_to_new_session(user_id, old_session_key):
+def load_selected_chat(user_id, old_session_key):
     db_ref = get_firebase_connection()
     clean_user_id = str(user_id).replace(".", "_")
 
