@@ -87,3 +87,5 @@ class AIManager:
                 yield from strategy.generate_stream(model_id, chat_history, system_instruction)
             except Exception as e2:
                 yield f"All models failed. Primary error: {e}. Backup error: {e2}"
+
+

@@ -159,37 +159,30 @@ with st.sidebar:
 
                 # 2. FETCH PREVIEW: Only get the first 2 messages of the SELECTED session
                 # This prevents downloading the whole conversation
-                preview_query = db_ref.child("logs").child(clean_user_id).child(
-                    sel_log_key).order_by_key().limit_to_first(2).get()
+                preview_path = db_ref.child("logs").child(clean_user_id).child(sel_log_key).child("transcript")
+                preview_messages = preview_path.order_by_key().limit_to_first(2).get()
 
                 with st.container(border=True):
                     st.caption("🔍 Preview of selected session")
 
-                    if isinstance(preview_query, list):
-                        # Firebase sometimes returns a list if keys are numeric/sequential
-                        messages = [m for m in preview_query if m is not None]
-                    elif isinstance(preview_query, dict):
-                        # Usually returns a dict of {unique_id: {role:..., content:...}}
-                        messages = list(preview_query.values())
-                    else:
-                        messages = []
+                    # Firebase lists often return as a list with a None at index 0
+                    # if the keys aren't strictly 0-indexed, or as a dict.
+                    if preview_messages:
+                        # Normalize to a list of dicts
+                        if isinstance(preview_messages, dict):
+                            msgs = list(preview_messages.values())
+                        else:
+                            msgs = [m for m in preview_messages if m is not None]
 
-                    if messages:
-                        for msg in messages:
-                            # 1. If the message is a string, convert it to a dictionary
-                            if isinstance(msg, str):
-                                try:
-                                    msg = json.loads(msg)
-                                except json.JSONDecodeError:
-                                    continue
+                        for msg in msgs:
+                            role_icon = "👤" if msg.get("role") == "user" else "🤖"
+                            role_name = "User" if msg.get("role") == "user" else "ThunderbAIrd"
+                            content = msg.get("content", "No content")
 
-                                    # 2. Now safely access the role and content
-                            if isinstance(msg, dict):
-                                role = "User" if msg.get("role") == "user" else "Assistant"
-                                content = msg.get("content", "No content")
-                                st.markdown(f"**{role}**: {content[:100]}...")
+                            # Use a cleaner display for the preview
+                            st.markdown(f"{role_icon} **{role_name}**: {content[:120]}...")
                     else:
-                        st.info("No messages found in this session.")
+                        st.info("Start chatting to see a preview here.")
 
             # 4. Action Button
             if st.button("🔄 Load & Continue Session", type="primary", use_container_width=True):

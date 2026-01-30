@@ -19,7 +19,6 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
     if db_ref:
         clean_user_id = str(user_id).replace(".", "_")
 
-        # Tag the most recent message with the interaction context
         if messages:
             messages[-1]["interaction"] = interaction_type
 
