@@ -121,79 +121,52 @@ with st.sidebar:
             st.download_button("📥 Download Current Chat", chat_text, file_name="chat.txt", use_container_width=True)
 
             # 2. LOAD PREVIOUS CHATS
-        st.markdown("---")
-        db_ref = get_firebase_connection()
-        clean_user_id = str(st.session_state['current_user']).replace(".", "_")
-        user_logs = db_ref.child("logs").child(clean_user_id).get()
+       # 2. LOAD PREVIOUS CHATS (Optimized)
+st.markdown("---")
+db_ref = get_firebase_connection()
+clean_user_id = str(st.session_state['current_user']).replace(".", "_")
 
-        if user_logs:
-            # 1. Create the mapping for clean timestamps
-            display_options = {}
-            for raw_key in sorted(user_logs.keys(), reverse=True):
-                try:
-                    dt_obj = datetime.fromisoformat(str(raw_key))
-                    clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
-                except ValueError:
-                    clean_date = str(raw_key)
-                display_options[clean_date] = raw_key
+# ONLY fetch keys. This is extremely fast regardless of chat size.
+all_logs_dict = db_ref.child("logs").child(clean_user_id).get(shallow=True)
 
-            st.subheader("Chat History")
+if all_logs_dict:
+    all_session_keys = sorted(all_logs_dict.keys(), reverse=True)
+    display_options = {}
 
-            all_logs_dict = db_ref.child("logs").child(clean_user_id).get(shallow=True)
+    for k in all_session_keys:
+        try:
+            dt_obj = datetime.strptime(k, "%Y%m%d_%H%M%S")
+            clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
+        except ValueError:
+            try:
+                dt_obj = datetime.fromisoformat(k.replace("Z", ""))
+                clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
+            except:
+                clean_date = k
+        display_options[clean_date] = k
 
-            if all_logs_dict:
-                all_session_keys = sorted(all_logs_dict.keys(), reverse=True)
+    st.subheader("Chat History")
+    selected_display = st.selectbox("Choose a previous session:", options=list(display_options.keys()))
+    sel_log_key = display_options[selected_display]
 
-                display_options = {}
-                for k in all_session_keys:
-                    try:
-                        # Handle your specific format: 20260130_115629
-                        dt_obj = datetime.strptime(k, "%Y%m%d_%H%M%S")
-                        clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
-                    except ValueError:
-                        # Fallback for ISO format or unexpected strings
-                        try:
-                            dt_obj = datetime.fromisoformat(k.replace("Z", ""))
-                            clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
-                        except:
-                            clean_date = k
+    # 2. FETCH PREVIEW: Fetch ONLY the first message object, not the whole list
+    # We point directly to index '0' of the transcript
+    preview_msg = db_ref.child("logs").child(clean_user_id).child(sel_log_key).child("transcript").child("0").get()
 
-                    display_options[clean_date] = k
+    with st.container(border=True):
+        st.caption("🔍 Preview of selected session")
+        if preview_msg:
+            role_name = "User" if preview_msg.get("role") == "user" else "Assistant"
+            content = preview_msg.get("content", "No content")
+            st.markdown(f"**{role_name}**: {content[:120]}...")
+        else:
+            st.info("No preview available for this session.")
 
-                selected_display = st.selectbox("Choose a previous session:", options=list(display_options.keys()))
-                sel_log_key = display_options[selected_display]
-
-                # 2. FETCH PREVIEW: Only get the first 2 messages of the SELECTED session
-                # This prevents downloading the whole conversation
-                preview_path = db_ref.child("logs").child(clean_user_id).child(sel_log_key).child("transcript")
-                preview_messages = preview_path.order_by_key().limit_to_first(2).get()
-
-                with st.container(border=True):
-                    st.caption("🔍 Preview of selected session")
-
-                    # Firebase lists often return as a list with a None at index 0
-                    # if the keys aren't strictly 0-indexed, or as a dict.
-                    if preview_messages:
-                        # Normalize to a list of dicts
-                        if isinstance(preview_messages, dict):
-                            msgs = list(preview_messages.values())
-                        else:
-                            msgs = [m for m in preview_messages if m is not None]
-
-                        for msg in msgs:
-                            role_name = "User" if msg.get("role") == "user" else "ThunderbAIrd"
-                            content = msg.get("content", "No content")
-
-                            # Use a cleaner display for the preview
-                            st.markdown(f"**{role_name}**: {content[:120]}...")
-                    else:
-                        st.info("Start chatting to see a preview here.")
-
-            # 4. Action Button
-            if st.button("🔄 Load & Continue Session", type="primary", use_container_width=True):
-                st.session_state["messages"] = []
-                load_selected_chat(st.session_state['current_user'], sel_log_key)
-                st.rerun()
+    # 4. Action Button
+    if st.button("🔄 Load & Continue Session", type="primary", use_container_width=True):
+        # We don't need to clear messages here, load_selected_chat will overwrite it
+        load_selected_chat(st.session_state['current_user'], sel_log_key)
+        st.rerun()
 
         # 3. CLEAR CHAT (Important: resets session_id)
         if st.button("New Chat", use_container_width=True):
