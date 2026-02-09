@@ -32,8 +32,11 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
 def load_selected_chat(user_id, session_key):
     db_ref = get_firebase_connection()
     clean_user_id = str(user_id).replace(".", "_")
-    chat_data = db_ref.child("logs").child(clean_user_id).child(session_key).get()
+    
+    # Point directly to the transcript node
+    transcript_ref = db_ref.child("logs").child(clean_user_id).child(session_key).child("transcript")
+    transcript = transcript_ref.get()
 
-    if chat_data and "transcript" in chat_data:
-        st.session_state["messages"] = chat_data["transcript"]
+    if transcript:
+        st.session_state["messages"] = transcript
         st.session_state["session_id"] = session_key
