@@ -33,10 +33,16 @@ def load_selected_chat(user_id, session_key):
     db_ref = get_firebase_connection()
     clean_user_id = str(user_id).replace(".", "_")
     
-    # Point directly to the transcript node
-    transcript_ref = db_ref.child("logs").child(clean_user_id).child(session_key).child("transcript")
-    transcript = transcript_ref.get()
+    # Target only the transcript node to avoid downloading metadata like 'model_name' 
+    # if it's not needed for the UI state
+    transcript = db_ref.child("logs").child(clean_user_id).child(session_key).child("transcript").get()
 
     if transcript:
-        st.session_state["messages"] = transcript
+        # Firebase lists with integer keys often return as lists; 
+        # filter out None values caused by 0-indexing quirks
+        if isinstance(transcript, list):
+            st.session_state["messages"] = [m for m in transcript if m is not None]
+        else:
+            st.session_state["messages"] = list(transcript.values())
+            
         st.session_state["session_id"] = session_key
