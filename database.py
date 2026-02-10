@@ -18,9 +18,13 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
     db_ref = get_firebase_connection()
     if db_ref:
         clean_user_id = str(user_id).replace(".", "_")
+        
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         if messages:
             messages[-1]["interaction"] = interaction_type
+            if "timestamp" not in messages[-1]:
+                messages[-1]["timestamp"] = timestamp
 
         db_ref.child("logs").child(clean_user_id).child(session_id).update({
             "model_name": model_name,
