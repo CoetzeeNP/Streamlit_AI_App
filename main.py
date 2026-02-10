@@ -46,6 +46,18 @@ AI_CONFIG = {
 selected_label = AI_CONFIG["active_model"]
 system_instr = AI_CONFIG["system_instruction"]
 
+@st.cache_data(ttl=300)  # Cache history list for 5 minutes
+def get_cached_history_keys(user_id):
+    db_ref = get_firebase_connection()
+    clean_user_id = str(user_id).replace(".", "_")
+    return db_ref.child("logs").child(clean_user_id).get(shallow=True)
+
+@st.cache_data(ttl=600)  # Cache the preview content
+def get_cached_preview(user_id, session_key):
+    db_ref = get_firebase_connection()
+    clean_user_id = str(user_id).replace(".", "_")
+    return db_ref.child("logs").child(clean_user_id).child(session_key).child("transcript").child("0").get()
+
 def convert_messages_to_text():
     """Converts session messages to a readable format for download."""
     transcript = "Chat History - Business Planning Assistant\n" + "=" * 40 + "\n"
@@ -90,7 +102,7 @@ with st.sidebar:
         u_id = st.text_input("Enter Student ID", type="password")
         if st.button("Login", use_container_width=True):
             if u_id in AUTHORIZED_STUDENT_IDS:
-                controller.set('student_auth_id', u_id)  # Save cookie
+                controller.set('student_auth_id', u_id)
                 st.session_state["authenticated"] = True
                 st.session_state["current_user"] = u_id
                 st.rerun()
@@ -102,32 +114,25 @@ with st.sidebar:
 
         with col1:
             if st.button("Logout", use_container_width=True):
+                st.cache_data.clear() # Clear cache on logout
                 st.session_state.clear()
                 st.rerun()
 
         with col2:
-            # Your new MS Form button
             st.link_button("Feedback",
-                           "https://forms.office.com/Pages/ResponsePage.aspx?id=uRv8jg-5SEq_bLoGhhk7gBvkZQsfRhhErcivaQmEhItUNENSMEJNQTM3UzQ1RlBMSFBUVTFKTFg2VS4u",
+                           "https://forms.office.com/Pages/ResponsePage.aspx?id=...",
                            use_container_width=True)
 
-
-        # --- Download Button ---
         if st.session_state["messages"]:
-            chat_text = "Business Planning Assistant Transcript\n" + "=" * 30
-            for m in st.session_state["messages"]:
-                chat_text += f"\n{m['role'].upper()}: {m['content']}\n"
-
+            chat_text = convert_messages_to_text()
             st.download_button("📥 Download Current Chat", chat_text, file_name="chat.txt", use_container_width=True)
 
-                    # 2. LOAD PREVIOUS CHATS
-               # 2. LOAD PREVIOUS CHATS (Optimized)
+        # --- OPTIMIZED CHAT HISTORY ---
         st.markdown("---")
-        db_ref = get_firebase_connection()
-        clean_user_id = str(st.session_state['current_user']).replace(".", "_")
+        st.subheader("Chat History")
         
-        # ONLY fetch keys. This is extremely fast regardless of chat size.
-        all_logs_dict = db_ref.child("logs").child(clean_user_id).get(shallow=True)
+        # Use the cached function instead of direct DB call
+        all_logs_dict = get_cached_history_keys(st.session_state['current_user'])
         
         if all_logs_dict:
             all_session_keys = sorted(all_logs_dict.keys(), reverse=True)
@@ -137,21 +142,15 @@ with st.sidebar:
                 try:
                     dt_obj = datetime.strptime(k, "%Y%m%d_%H%M%S")
                     clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
-                except ValueError:
-                    try:
-                        dt_obj = datetime.fromisoformat(k.replace("Z", ""))
-                        clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
-                    except:
-                        clean_date = k
+                except:
+                    clean_date = k
                 display_options[clean_date] = k
         
-            st.subheader("Chat History")
             selected_display = st.selectbox("Choose a previous session:", options=list(display_options.keys()))
             sel_log_key = display_options[selected_display]
         
-            # 2. FETCH PREVIEW: Fetch ONLY the first message object, not the whole list
-            # We point directly to index '0' of the transcript
-            preview_msg = db_ref.child("logs").child(clean_user_id).child(sel_log_key).child("transcript").child("0").get()
+            # Use the cached preview function
+            preview_msg = get_cached_preview(st.session_state['current_user'], sel_log_key)
         
             with st.container(border=True):
                 st.caption("🔍 Preview of selected session")
@@ -160,18 +159,17 @@ with st.sidebar:
                     content = preview_msg.get("content", "No content")
                     st.markdown(f"**{role_name}**: {content[:120]}...")
                 else:
-                    st.info("No preview available for this session.")
+                    st.info("No preview available.")
         
-            # 4. Action Button
             if st.button("🔄 Load & Continue Session", type="primary", use_container_width=True):
-                # We don't need to clear messages here, load_selected_chat will overwrite it
                 load_selected_chat(st.session_state['current_user'], sel_log_key)
                 st.rerun()
 
-        # 3. CLEAR CHAT (Important: resets session_id)
         if st.button("New Chat", use_container_width=True):
             st.session_state["messages"] = []
             st.session_state["session_id"] = datetime.now().strftime("%Y%m%d_%H%M%S")
+            # We don't clear the whole cache here so history stays visible, 
+            # but you could use st.cache_data.clear() if you want a total refresh.
             st.rerun()
 
 # --- Main Logic ---
