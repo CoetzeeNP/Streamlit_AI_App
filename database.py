@@ -19,7 +19,7 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
     if db_ref:
         clean_user_id = str(user_id).replace(".", "_")
         
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         if messages:
             messages[-1]["interaction"] = interaction_type
