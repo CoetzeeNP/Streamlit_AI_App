@@ -46,13 +46,13 @@ AI_CONFIG = {
 selected_label = AI_CONFIG["active_model"]
 system_instr = AI_CONFIG["system_instruction"]
 
-@st.cache_data(ttl=300)  # Cache history list for 5 minutes
+@st.cache_data(ttl=1800)  # Cache history list for 5 minutes
 def get_cached_history_keys(user_id):
     db_ref = get_firebase_connection()
     clean_user_id = str(user_id).replace(".", "_")
     return db_ref.child("logs").child(clean_user_id).get(shallow=True)
 
-@st.cache_data(ttl=600)  # Cache the preview content
+@st.cache_data(ttl=1800)  # Cache the preview content
 def get_cached_preview(user_id, session_key):
     db_ref = get_firebase_connection()
     clean_user_id = str(user_id).replace(".", "_")
@@ -217,7 +217,7 @@ else:
     input_ph = "Please give feedback on the last answer..." if st.session_state["feedback_pending"] else "Ask your question here..."
     if prompt := st.chat_input(input_ph, disabled=st.session_state["feedback_pending"]):
 
-        st.session_state["messages"].append({"role": "user", "content": prompt})
+        st.session_state["messages"].append({"role": "user", "content": prompt, })
 
         with st.chat_message("user"):
             st.markdown(prompt)
