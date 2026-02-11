@@ -80,21 +80,28 @@ def generate_ai_response(interaction_type):
 
 def handle_feedback(understood: bool):
     if understood:
-        save_to_firebase(st.session_state["current_user"], AI_CONFIG["active_model"], st.session_state["messages"],
-                         "UNDERSTOOD_FEEDBACK", st.session_state["session_id"])
+        # Pass True to the new feedback_value parameter
+        save_to_firebase(
+            st.session_state["current_user"],
+            AI_CONFIG["active_model"],
+            st.session_state["messages"],
+            "UNDERSTOOD_FEEDBACK",
+            st.session_state["session_id"],
+            feedback_value=True
+        )
         st.session_state["feedback_pending"] = False
     else:
-        # 1. Append the clarification message
         clarification_text = "I don't understand the previous explanation. Please break it down further."
         st.session_state["messages"].append({"role": "user", "content": clarification_text})
 
-        # 2. Log this specific user action as a CLARIFICATION_REQUEST
+        # Pass False to the new feedback_value parameter
         save_to_firebase(
             st.session_state["current_user"],
             AI_CONFIG["active_model"],
             st.session_state["messages"],
             "CLARIFICATION_REQUEST",
-            st.session_state["session_id"]
+            st.session_state["session_id"],
+            feedback_value=False
         )
 
         st.session_state["trigger_clarification"] = True

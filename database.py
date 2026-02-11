@@ -14,18 +14,12 @@ def get_firebase_connection():
     return db.reference("/")
 
 
-def save_to_firebase(user_id, model_name, messages, interaction_type, session_id):
+def save_to_firebase(user_id, model_name, messages, interaction_type, session_id, feedback_value=None):
     db_ref = get_firebase_connection()
     clean_uid = str(user_id).replace(".", "_")
 
-    # Path to the specific session
     session_ref = db_ref.child("logs").child(clean_uid).child(session_id)
-
-    # 1. Prepare top-level metadata
-    # 2. Update the last message in the transcript to include the model_name
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # We only update the 'model_name' on the very last message being logged
     last_index = len(messages) - 1
 
     update_data = {
@@ -35,11 +29,11 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
         f"transcript/{last_index}/content": messages[-1]["content"],
         f"transcript/{last_index}/role": messages[-1]["role"],
         f"transcript/{last_index}/timestamp": current_time,
-        f"transcript/{last_index}/interaction": interaction_type
+        f"transcript/{last_index}/interaction": interaction_type,
+        # --- NEW FIELD ---
+        f"transcript/{last_index}/user_understood": feedback_value
     }
 
-    # Using update() ensures we don't overwrite the whole session,
-    # just the specific keys we've defined.
     session_ref.update(update_data)
 
 # This stays the same and works better with Option 1
