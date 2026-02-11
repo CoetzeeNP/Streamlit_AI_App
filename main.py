@@ -72,7 +72,6 @@ def generate_ai_response(interaction_type):
         st.session_state["current_user"], AI_CONFIG["active_model"],
         st.session_state["messages"], interaction_type, st.session_state["session_id"]
     )
-    st.session_state["feedback_pending"] = True
     st.rerun()
 
 
