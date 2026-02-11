@@ -23,6 +23,7 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, user_feedb
         if messages:
             # 1. Update the last message with the interaction type only
             messages[-1]["interaction"] = interaction_type
+            messages[-1]["user_feedback"] = user_feedback
             if "timestamp" not in messages[-1]:
                 messages[-1]["timestamp"] = timestamp
 
@@ -31,8 +32,7 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, user_feedb
         log_data = {
             "model_name": model_name,
             "transcript": messages,
-            "last_updated": timestamp,
-            "feedback": user_feedback  # Stored separately from the transcript
+            "last_updated": timestamp
         }
 
         db_ref.child("logs").child(clean_user_id).child(session_id).update(log_data)
