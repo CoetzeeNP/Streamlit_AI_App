@@ -23,7 +23,7 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
 
     # 1. Prepare top-level metadata
     # 2. Update the last message in the transcript to include the model_name
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # We only update the 'model_name' on the very last message being logged
     last_index = len(messages) - 1
