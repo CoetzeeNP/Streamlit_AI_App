@@ -94,6 +94,8 @@ def handle_feedback(understood: bool):
         clarification_text = "I don't understand the previous explanation. Please break it down further."
         st.session_state["messages"].append({"role": "user", "content": clarification_text})
 
+        st.session_state["trigger_clarification"] = True
+
         # Pass False to the new feedback_value parameter
         save_to_firebase(
             st.session_state["current_user"],
@@ -103,8 +105,6 @@ def handle_feedback(understood: bool):
             st.session_state["session_id"],
             feedback_value=False
         )
-
-        st.session_state["trigger_clarification"] = True
         st.session_state["feedback_pending"] = False
 
 
