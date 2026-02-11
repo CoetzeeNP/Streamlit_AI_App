@@ -59,11 +59,10 @@ class OpenAIStrategy(AIStrategy):
 
 
 class AIManager:
-    def __init__(self, model_):
-        self.preferred_label = model_
+    def __init__(self, model_label):
         self.failover_order = [
-            model_,
-            "ChatGPT 5.2" if model_ == "gemini-3-pro-preview" else "gemini-3-pro-preview"
+            model_label,
+            "ChatGPT 5.2" if model_label == "gemini-3-pro-preview" else "gemini-3-pro-preview"
         ]
         self.strategies = {
             "gemini-3-pro-preview": (GeminiStrategy(), "gemini-3-pro-preview"),
@@ -71,21 +70,14 @@ class AIManager:
         }
 
     def get_response_stream(self, chat_history, system_instruction):
-        """Returns a generator that handles failover internally"""
-        primary_label = self.failover_order[0]
-        secondary_label = self.failover_order[1]
-
-        try:
-            strategy, model_id = self.strategies[primary_label]
-            # Try primary
-            yield from strategy.generate_stream(model_id, chat_history, system_instruction)
-        except Exception as e:
-            st.warning(f"Primary model ({primary_label}) failed. Failing over to backup...")
+        for label in self.failover_order:
             try:
-                strategy, model_id = self.strategies[secondary_label]
-                # Try secondary
-                yield from strategy.generate_stream(model_id, chat_history, system_instruction)
-            except Exception as e2:
-                yield f"All models failed. Primary error: {e}. Backup error: {e2}"
-
-
+                strategy, model_id = self.strategies[label]
+                # Test if the generator works
+                for chunk in strategy.generate_stream(model_id, chat_history, system_instruction):
+                    yield chunk, label  # Yielding the TUPLE
+                return
+            except Exception as e:
+                if label == self.failover_order[-1]:
+                    yield f"Error: {str(e)}", label
+                continue
