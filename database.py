@@ -16,24 +16,31 @@ def get_firebase_connection():
 
 def save_to_firebase(user_id, model_name, messages, interaction_type, session_id):
     db_ref = get_firebase_connection()
-    if db_ref:
-        clean_user_id = str(user_id).replace(".", "_")
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    clean_uid = str(user_id).replace(".", "_")
 
-        if messages:
-            # Add metadata to the latest message
-            messages[-1]["interaction"] = interaction_type
-            if "timestamp" not in messages[-1]:
-                messages[-1]["timestamp"] = timestamp
+    # Path to the specific session
+    session_ref = db_ref.child("logs").child(clean_uid).child(session_id)
 
-        log_data = {
-            "model_name": model_name,
-            "transcript": messages,
-            "last_updated": timestamp,
-            "last_interaction": interaction_type # Useful for quick filtering in Firebase
-        }
+    # 1. Prepare top-level metadata
+    # 2. Update the last message in the transcript to include the model_name
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        db_ref.child("logs").child(clean_user_id).child(session_id).update(log_data)
+    # We only update the 'model_name' on the very last message being logged
+    last_index = len(messages) - 1
+
+    update_data = {
+        "last_interaction": interaction_type,
+        "last_updated": current_time,
+        f"transcript/{last_index}/model_name": model_name,
+        f"transcript/{last_index}/content": messages[-1]["content"],
+        f"transcript/{last_index}/role": messages[-1]["role"],
+        f"transcript/{last_index}/timestamp": current_time,
+        f"transcript/{last_index}/interaction": interaction_type
+    }
+
+    # Using update() ensures we don't overwrite the whole session,
+    # just the specific keys we've defined.
+    session_ref.update(update_data)
 
 # This stays the same and works better with Option 1
 def load_selected_chat(user_id, session_key):
