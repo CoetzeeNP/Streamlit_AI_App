@@ -54,3 +54,19 @@ def load_selected_chat(user_id, session_key):
             st.session_state["messages"] = list(transcript.values())
             
         st.session_state["session_id"] = session_key
+
+
+def update_previous_feedback(user_id, session_id, messages, understood_value):
+    db_ref = get_firebase_connection()
+    clean_uid = str(user_id).replace(".", "_")
+
+    # The Assistant's message is at the index BEFORE the current one
+    # If messages has 2 items [User, AI], and we just added 1 [Clarification],
+    # the AI is at index (len - 2)
+    target_index = len(messages) - 2
+
+    if target_index >= 0:
+        path = f"logs/{clean_uid}/{session_id}/transcript/{target_index}"
+        db_ref.child(path).update({
+            "user_understood": understood_value
+        })

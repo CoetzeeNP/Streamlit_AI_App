@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import datetime
 from ai_strategy import AIManager
-from database import save_to_firebase, get_firebase_connection, load_selected_chat
+from database import save_to_firebase, get_firebase_connection, load_selected_chat, update_previous_feedback
 from streamlit_cookies_controller import CookieController
 
 # --- 1. Setup & Configuration ---
@@ -79,32 +79,32 @@ def generate_ai_response(interaction_type):
 
 
 def handle_feedback(understood: bool):
+    user_id = st.session_state["current_user"]
+    session_id = st.session_state["session_id"]
+
     if understood:
-        save_to_firebase(
-            st.session_state["current_user"],
-            AI_CONFIG["active_model"],
-            st.session_state["messages"],
-            "FEEDBACK_POSITIVE", # Changed name for clarity in logs
-            st.session_state["session_id"],
-            feedback_value=True
-        )
+        # User understood the LAST message (len - 1)
+        save_to_firebase(user_id, AI_CONFIG["active_model"], st.session_state["messages"],
+                         "GENERATED_RESPONSE", session_id, feedback_value=True)
         st.session_state["feedback_pending"] = False
     else:
-        # 1. Add the "help" message to the list
+        # 1. Add the "help" text to session state
         clarification_text = "I don't understand the previous explanation. Please break it down further."
         st.session_state["messages"].append({"role": "user", "content": clarification_text})
 
-        # 2. Log the USER'S request for clarification
+        # 2. UPDATE the previous AI message to say "user_understood: False"
+        update_previous_feedback(user_id, session_id, st.session_state["messages"], False)
+
+        # 3. LOG the new Clarification Request normally
         save_to_firebase(
-            st.session_state["current_user"],
+            user_id,
             AI_CONFIG["active_model"],
             st.session_state["messages"],
-            "CLARIFICATION_REQUEST", # This is the USER event
-            st.session_state["session_id"],
-            feedback_value=False
+            "CLARIFICATION_REQUEST",
+            session_id,
+            feedback_value=None # This message itself doesn't need a feedback value
         )
 
-        # 3. Set triggers for the NEXT AI response
         st.session_state["trigger_clarification"] = True
         st.session_state["feedback_pending"] = False
 
