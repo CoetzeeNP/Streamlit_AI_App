@@ -67,31 +67,42 @@ def generate_ai_response(interaction_type):
 
     st.session_state["messages"].append({"role": "assistant", "content": full_res})
 
-    # Logs the AI's response (GENERATED_RESPONSE or CLARIFICATION_RESPONSE)
+    # Added None for the user_feedback parameter
     save_to_firebase(
-        st.session_state["current_user"], AI_CONFIG["active_model"],
-        st.session_state["messages"], interaction_type, st.session_state["session_id"]
+        st.session_state["current_user"],
+        AI_CONFIG["active_model"],
+        st.session_state["messages"],
+        interaction_type,
+        None, # No feedback yet
+        st.session_state["session_id"]
     )
     st.session_state["feedback_pending"] = True
     st.rerun()
 
 
 def handle_feedback(understood: bool):
+    feedback_val = "Positive: User understood" if understood else "Negative: User needed clarification"
+
     if understood:
-        save_to_firebase(st.session_state["current_user"], AI_CONFIG["active_model"], st.session_state["messages"],
-                         "UNDERSTOOD_FEEDBACK", st.session_state["session_id"])
+        save_to_firebase(
+            st.session_state["current_user"],
+            AI_CONFIG["active_model"],
+            st.session_state["messages"],
+            "UNDERSTOOD_FEEDBACK",
+            feedback_val,  # Explicit feedback
+            st.session_state["session_id"]
+        )
         st.session_state["feedback_pending"] = False
     else:
-        # 1. Append the clarification message
         clarification_text = "I don't understand the previous explanation. Please break it down further."
         st.session_state["messages"].append({"role": "user", "content": clarification_text})
 
-        # 2. Log this specific user action as a CLARIFICATION_REQUEST
         save_to_firebase(
             st.session_state["current_user"],
             AI_CONFIG["active_model"],
             st.session_state["messages"],
             "CLARIFICATION_REQUEST",
+            feedback_val,  # Explicit feedback
             st.session_state["session_id"]
         )
 
@@ -184,12 +195,12 @@ input_msg = "Please provide feedback..." if st.session_state["feedback_pending"]
 if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pending"]):
     st.session_state["messages"].append({"role": "user", "content": prompt})
 
-    # Immediately log the user's manual input
     save_to_firebase(
         st.session_state["current_user"],
         AI_CONFIG["active_model"],
         st.session_state["messages"],
         "USER_REQUEST",
+        None, # No feedback on a standard prompt
         st.session_state["session_id"]
     )
     st.rerun()
