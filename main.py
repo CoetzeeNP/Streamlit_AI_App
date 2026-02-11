@@ -203,9 +203,9 @@ else:
         save_to_firebase(
             st.session_state["current_user"],
             selected_label,
-            st.session_state["messages"],  # Correct: passing the list
-            "CLARIFICATION_RESPONSE",  # Correct: the interaction type
-            st.session_state["session_id"]  # Correct: the missing session_id
+            st.session_state["messages"],
+            "CLARIFICATION_REQUEST",
+            st.session_state["session_id"]
         )
 
         st.session_state["messages"].append({"role": "assistant", "content": full_response})
