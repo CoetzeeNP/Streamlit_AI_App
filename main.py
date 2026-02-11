@@ -85,7 +85,7 @@ def handle_feedback(understood: bool):
             st.session_state["current_user"],
             AI_CONFIG["active_model"],
             st.session_state["messages"],
-            "UNDERSTOOD_FEEDBACK",
+            "GENERATED_RESPONSE",
             st.session_state["session_id"],
             feedback_value=True
         )
