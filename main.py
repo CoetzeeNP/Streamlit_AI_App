@@ -176,48 +176,49 @@ with st.sidebar:
 if not st.session_state["authenticated"]:
     st.warning("Please login with an authorized Student ID in the sidebar.")
 else:
+    # 1. Display chat history
     for msg in st.session_state["messages"]:
         role_label = st.session_state["current_user"] if msg["role"] == "user" else "Assistant"
-
         with st.chat_message(msg["role"]):
-            # Show the interaction type as a small caption if it exists
             if "interaction" in msg:
                 st.caption(f"Action: {msg['interaction'].replace('_', ' ')}")
-
             with st.container(border=True):
                 st.markdown(f"**{role_label}:**")
                 st.markdown(msg["content"])
 
-    # 2. NEW: The Clarification Trigger Catch
-    # This block runs if handle_feedback set the trigger_clarification flag
+    # 2. THE CLARIFICATION TRIGGER CATCH
+    # This executes immediately after handle_feedback sets trigger_clarification = True
     if st.session_state.get("trigger_clarification", False):
         with st.chat_message("assistant"):
             with st.container(border=True):
-                st.markdown("**Business Planning Assistant:**")
+                st.markdown("**Business Planning Assistant (Clarification):**")
+
+                # Initialize AI and stream the simplified response
                 ai_manager = AIManager(selected_label)
                 full_response = st.write_stream(
                     ai_manager.get_response_stream(st.session_state["messages"], system_instr)
                 )
 
-        # Finalize Clarification State
+        # Log the clarification event to Firebase
         save_to_firebase(
             st.session_state["current_user"],
             selected_label,
             st.session_state["messages"],
-            "CLARIFICATION_REQUEST",
+            "CLARIFICATION_RESPONSE",  # Updated label for clarity in logs
             st.session_state["session_id"]
         )
 
+        # Update state: Append AI response, turn off trigger, and keep feedback open for the new answer
         st.session_state["messages"].append({"role": "assistant", "content": full_response})
         st.session_state["trigger_clarification"] = False
         st.session_state["feedback_pending"] = True
         st.rerun()
 
     # 3. Standard Chat Input
-    input_ph = "Please give feedback on the last answer..." if st.session_state["feedback_pending"] else "Ask your question here..."
+    input_ph = "Please give feedback on the last answer..." if st.session_state[
+        "feedback_pending"] else "Ask your question here..."
     if prompt := st.chat_input(input_ph, disabled=st.session_state["feedback_pending"]):
-
-        st.session_state["messages"].append({"role": "user", "content": prompt, })
+        st.session_state["messages"].append({"role": "user", "content": prompt})
 
         with st.chat_message("user"):
             st.markdown(prompt)
@@ -233,7 +234,7 @@ else:
         save_to_firebase(
             user_id=st.session_state["current_user"],
             model_name=selected_label,
-            messages=st.session_state["messages"],  # Pass the history list
+            messages=st.session_state["messages"],
             interaction_type="INITIAL_QUERY",
             session_id=st.session_state["session_id"]
         )
@@ -247,6 +248,8 @@ else:
         st.info("Did you understand the assistant's response?")
         c1, c2 = st.columns(2)
         with c1:
-            st.button("I understand!", on_click=handle_feedback, args=(True, selected_label), use_container_width=True)
+            st.button("I understand!", on_click=handle_feedback, args=(True, selected_label), use_container_width=True,
+                      key="btn_understand")
         with c2:
-            st.button("I need some help!", on_click=handle_feedback, args=(False, selected_label), use_container_width=True)
+            st.button("I need some help!", on_click=handle_feedback, args=(False, selected_label),
+                      use_container_width=True, key="btn_help")
