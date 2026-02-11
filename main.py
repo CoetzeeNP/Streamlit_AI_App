@@ -64,33 +64,36 @@ def generate_ai_response(interaction_type):
             ai_manager = AIManager(AI_CONFIG["active_model"])
 
             full_res = ""
-            actual_model = AI_CONFIG["active_model"]  # Default fallback
+            # Initialize with default, will be updated by the stream
+            actual_model = AI_CONFIG["active_model"]
 
-            # Create a placeholder for the stream
             placeholder = st.empty()
 
-            # Manually iterate to capture the model label
+            # The generator yields (token, model_label)
             for chunk, model_label in ai_manager.get_response_stream(
                     st.session_state["messages"],
                     AI_CONFIG["system_instruction"]
             ):
                 full_res += chunk
-                actual_model = model_label  # This updates if failover occurs
+                actual_model = model_label  # Updates to 'ChatGPT 5.2' if Gemini fails
                 placeholder.markdown(full_res + "▌")
 
-            placeholder.markdown(full_res)  # Clean up cursor
+            placeholder.markdown(full_res)
 
+    # 1. Update Session State
     st.session_state["messages"].append({"role": "assistant", "content": full_res})
     st.session_state["feedback_pending"] = True
 
-    # LOGGING: Use actual_model instead of AI_CONFIG["active_model"]
+    # 2. LOGGING: Use actual_model (the one that actually answered)
     save_to_firebase(
         st.session_state["current_user"],
-        actual_model,  # <--- FIXED: Now logs the specific model used
+        actual_model,
         st.session_state["messages"],
         interaction_type,
         st.session_state["session_id"]
     )
+
+    # 3. Final Rerun to refresh UI and show feedback buttons
     st.rerun()
 
     st.session_state["messages"].append({"role": "assistant", "content": full_res})
