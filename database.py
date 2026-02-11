@@ -14,25 +14,23 @@ def get_firebase_connection():
     return db.reference("/")
 
 
-def save_to_firebase(user_id, model_name, messages, interaction_type, user_feedback, session_id):
+def save_to_firebase(user_id, model_name, messages, interaction_type, session_id):
     db_ref = get_firebase_connection()
     if db_ref:
         clean_user_id = str(user_id).replace(".", "_")
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         if messages:
-            # 1. Update the last message with the interaction type only
+            # Add metadata to the latest message
             messages[-1]["interaction"] = interaction_type
             if "timestamp" not in messages[-1]:
                 messages[-1]["timestamp"] = timestamp
 
-        # 2. Build the update payload
-        # We separate feedback into its own key so it's searchable/exportable
         log_data = {
             "model_name": model_name,
             "transcript": messages,
             "last_updated": timestamp,
-            "feedback": user_feedback  # Stored separately from the transcript
+            "last_interaction": interaction_type # Useful for quick filtering in Firebase
         }
 
         db_ref.child("logs").child(clean_user_id).child(session_id).update(log_data)
