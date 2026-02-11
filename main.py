@@ -92,7 +92,7 @@ def handle_feedback(understood: bool):
         st.session_state["feedback_pending"] = False
     else:
         clarification_text = "I don't understand the previous explanation. Please break it down further."
-        st.session_state["messages"].append({"role": "user", "content": clarification_text})
+        st.session_state["messages"].append({"role": "automated", "content": clarification_text})
 
         # Pass False to the new feedback_value parameter
         save_to_firebase(
@@ -193,13 +193,6 @@ input_msg = "Please provide feedback..." if st.session_state["feedback_pending"]
 if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pending"]):
     st.session_state["messages"].append({"role": "user", "content": prompt})
 
-    if st.session_state["feedback_pending"]:
-        st.divider()
-        st.info("Did you understand the explanation?")
-        c1, c2 = st.columns(2)
-        c1.button("I understand!", on_click=handle_feedback, args=(True,), use_container_width=True)
-        c2.button("I need more help!", on_click=handle_feedback, args=(False,), use_container_width=True)
-
     # Immediately log the user's manual input
     save_to_firebase(
         st.session_state["current_user"],
@@ -210,6 +203,13 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
     )
     st.rerun()
 
+# 4. Feedback UI
+if st.session_state["feedback_pending"]:
+    st.divider()
+    st.info("Did you understand the explanation?")
+    c1, c2 = st.columns(2)
+    c1.button("I understand!", on_click=handle_feedback, args=(True,), use_container_width=True)
+    c2.button("I need more help!", on_click=handle_feedback, args=(False,), use_container_width=True)
 
 # 5. Generate Standard Response
 # This only fires if the last message is from a user and it wasn't a clarification trigger
