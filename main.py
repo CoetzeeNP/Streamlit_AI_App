@@ -57,40 +57,33 @@ def get_cached_preview(user_id, session_key):
 
 
 def generate_ai_response(interaction_type):
-    """Unified function to get AI response and log to DB."""
     with st.chat_message("assistant"):
         with st.container(border=True):
             st.markdown("**Business Planning Assistant:**")
-            ai_manager = AIManager(AI_CONFIG["active_model"])
-
-            full_res = ""
-            actual_model = AI_CONFIG["active_model"]  # Default fallback
-
-            # Create a placeholder for the stream
-            placeholder = st.empty()
-
-            # Manually iterate to capture the model label
-            for chunk, model_label in ai_manager.get_response_stream(
+            try:
+                ai_manager = AIManager(AI_CONFIG["active_model"])
+                # Capture the stream
+                response_generator = ai_manager.get_response_stream(
                     st.session_state["messages"],
                     AI_CONFIG["system_instruction"]
-            ):
-                full_res += chunk
-                actual_model = model_label  # This updates if failover occurs
-                placeholder.markdown(full_res + "▌")
+                )
+                full_res = st.write_stream(response_generator)
 
-            placeholder.markdown(full_res)  # Clean up cursor
+                # ONLY IF SUCCESSFUL:
+                st.session_state["messages"].append({"role": "assistant", "content": full_res})
+                st.session_state["feedback_pending"] = True
 
-    st.session_state["messages"].append({"role": "assistant", "content": full_res})
-    st.session_state["feedback_pending"] = True
+                save_to_firebase(
+                    st.session_state["current_user"],
+                    AI_CONFIG["active_model"],
+                    st.session_state["messages"],
+                    interaction_type,
+                    st.session_state["session_id"]
+                )
+            except Exception as e:
+                st.error(f"AI Generation Failed: {str(e)}")
+                # Do NOT append to messages or save to firebase here
 
-    # LOGGING: Use actual_model instead of AI_CONFIG["active_model"]
-    save_to_firebase(
-        st.session_state["current_user"],
-        actual_model,  # <--- FIXED: Now logs the specific model used
-        st.session_state["messages"],
-        interaction_type,
-        st.session_state["session_id"]
-    )
     st.rerun()
 
     st.session_state["messages"].append({"role": "assistant", "content": full_res})
