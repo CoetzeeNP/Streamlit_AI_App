@@ -44,6 +44,17 @@ def get_cached_history_keys(user_id):
     db_ref = get_firebase_connection()
     return db_ref.child("logs").child(str(user_id).replace(".", "_")).get(shallow=True)
 
+# --- Updated Helper for Previews ---
+@st.cache_data(ttl=1800)
+def get_cached_preview(user_id, session_key):
+    try:
+        db_ref = get_firebase_connection()
+        clean_uid = str(user_id).replace(".", "_")
+        # Fetches just the first message (index 0) to keep it lightweight
+        return db_ref.child("logs").child(clean_uid).child(session_key).child("transcript").child("0").get()
+    except Exception:
+        return None
+
 
 def generate_ai_response(interaction_type):
     """Unified function to get AI response and log to DB."""
@@ -92,12 +103,35 @@ with st.sidebar:
             st.rerun()
 
         st.divider()
-        # History Logic (Simplified)
+        st.subheader("Chat History")
         all_logs = get_cached_history_keys(st.session_state['current_user'])
+
         if all_logs:
-            sorted_keys = sorted(all_logs.keys(), reverse=True)
-            sel_key = st.selectbox("Previous Sessions", sorted_keys)
-            if st.button("🔄 Load Session", use_container_width=True):
+            # Create a mapping of Pretty Date -> DB Key
+            display_options = {}
+            for k in sorted(all_logs.keys(), reverse=True):
+                try:
+                    dt_obj = datetime.strptime(k, "%Y%m%d_%H%M%S")
+                    clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
+                except:
+                    clean_date = k
+                display_options[clean_date] = k
+
+            sel_display = st.selectbox("Select a previous session:", options=list(display_options.keys()))
+            sel_key = display_options[sel_display]
+
+            # Re-added Preview Logic
+            preview_msg = get_cached_preview(st.session_state['current_user'], sel_key)
+
+            with st.expander("🔍 Preview Session"):
+                if preview_msg:
+                    role = "User" if preview_msg.get("role") == "user" else "Assistant"
+                    content = preview_msg.get("content", "No content available")
+                    st.markdown(f"**{role}:** {content[:100]}...")
+                else:
+                    st.info("No preview available.")
+
+            if st.button("🔄 Load & Continue", type="primary", use_container_width=True):
                 load_selected_chat(st.session_state['current_user'], sel_key)
                 st.rerun()
 
