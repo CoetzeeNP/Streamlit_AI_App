@@ -67,7 +67,10 @@ def generate_ai_response(interaction_type):
 
     st.session_state["messages"].append({"role": "assistant", "content": full_res})
 
-    # Logs the AI's response (GENERATED_RESPONSE or CLARIFICATION_RESPONSE)
+    # --- ADD THIS LINE ---
+    st.session_state["feedback_pending"] = True
+
+    # Logs the AI's response
     save_to_firebase(
         st.session_state["current_user"], AI_CONFIG["active_model"],
         st.session_state["messages"], interaction_type, st.session_state["session_id"]
