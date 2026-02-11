@@ -195,27 +195,22 @@ else:
             with st.container(border=True):
                 st.markdown("**Business Planning Assistant:**")
                 ai_manager = AIManager(selected_label)
-
-                # This generates the simplified content
                 full_response = st.write_stream(
                     ai_manager.get_response_stream(st.session_state["messages"], system_instr)
                 )
 
-        # Update messages list with the AI's simplified response
-        st.session_state["messages"].append({"role": "assistant", "content": full_response})
-
-        # SAVE TO FIREBASE here with the correct label
+        # Finalize Clarification State
         save_to_firebase(
             st.session_state["current_user"],
             selected_label,
-            st.session_state["messages"],
-            "CLARIFICATION_RESPONSE",  # Key change here
-            st.session_state["session_id"]
+            st.session_state["messages"],  # Correct: passing the list
+            "CLARIFICATION_RESPONSE",  # Correct: the interaction type
+            st.session_state["session_id"]  # Correct: the missing session_id
         )
 
-        # Reset triggers
+        st.session_state["messages"].append({"role": "assistant", "content": full_response})
         st.session_state["trigger_clarification"] = False
-        st.session_state["feedback_pending"] = True  # Prompt for feedback again on the new answer
+        st.session_state["feedback_pending"] = True
         st.rerun()
 
     # 3. Standard Chat Input
