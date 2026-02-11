@@ -170,12 +170,12 @@ if st.session_state.get("trigger_clarification"):
 input_msg = "Please provide feedback..." if st.session_state["feedback_pending"] else "Ask about your business plan..."
 if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pending"]):
     st.session_state["messages"].append({"role": "user", "content": prompt})
-    st.rerun()  # Rerun to show user message immediately
+    st.rerun()
 
 # Generate response if last message is from user and no feedback is pending
 if st.session_state["messages"] and st.session_state["messages"][-1]["role"] == "user" and not st.session_state[
     "feedback_pending"]:
-    generate_ai_response("INITIAL_QUERY")
+    generate_ai_response("INITIAL_RESPONSE")
 
 # Feedback UI
 if st.session_state["feedback_pending"]:
