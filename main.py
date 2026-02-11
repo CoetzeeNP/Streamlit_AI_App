@@ -92,7 +92,7 @@ def handle_feedback(understood: bool):
         st.session_state["feedback_pending"] = False
     else:
         clarification_text = "I don't understand the previous explanation. Please break it down further."
-        st.session_state["messages"].append({"role": "automated", "content": clarification_text})
+        st.session_state["messages"].append({"role": "user", "content": clarification_text})
 
         # Pass False to the new feedback_value parameter
         save_to_firebase(
