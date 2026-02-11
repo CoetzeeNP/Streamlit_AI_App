@@ -167,14 +167,6 @@ if not st.session_state["authenticated"]:
     st.warning("Please login via the sidebar.")
     st.stop()
 
-# --- 6. Main Chat UI ---
-st.image("combined_logo.jpg")
-st.title("Business Planning Assistant")
-
-if not st.session_state["authenticated"]:
-    st.warning("Please login via the sidebar.")
-    st.stop()
-
 # 1. Display Chat History
 for msg in st.session_state["messages"]:
     with st.chat_message(msg["role"]):
