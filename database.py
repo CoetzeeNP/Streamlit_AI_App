@@ -14,7 +14,7 @@ def get_firebase_connection():
     return db.reference("/")
 
 
-def save_to_firebase(user_id, model_name, messages, interaction_type, session_id):
+def save_to_firebase(user_id, model_name, messages, interaction_type, user_feedback, session_id):
     db_ref = get_firebase_connection()
     if db_ref:
         clean_user_id = str(user_id).replace(".", "_")
@@ -31,7 +31,7 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
         log_data = {
             "model_name": model_name,
             "transcript": messages,
-            "last_updated": timestamp
+            "last_updated": timestamp,
         }
 
         db_ref.child("logs").child(clean_user_id).child(session_id).update(log_data)
