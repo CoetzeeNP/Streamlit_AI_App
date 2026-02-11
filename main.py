@@ -193,6 +193,13 @@ input_msg = "Please provide feedback..." if st.session_state["feedback_pending"]
 if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pending"]):
     st.session_state["messages"].append({"role": "user", "content": prompt})
 
+    if st.session_state["feedback_pending"]:
+        st.divider()
+        st.info("Did you understand the explanation?")
+        c1, c2 = st.columns(2)
+        c1.button("I understand!", on_click=handle_feedback, args=(True,), use_container_width=True)
+        c2.button("I need more help!", on_click=handle_feedback, args=(False,), use_container_width=True)
+
     # Immediately log the user's manual input
     save_to_firebase(
         st.session_state["current_user"],
@@ -203,15 +210,8 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
     )
     st.rerun()
 
-# 5. Feedback UI
-if st.session_state["feedback_pending"]:
-    st.divider()
-    st.info("Did you understand the explanation?")
-    c1, c2 = st.columns(2)
-    c1.button("I understand!", on_click=handle_feedback, args=(True,), use_container_width=True)
-    c2.button("I need more help!", on_click=handle_feedback, args=(False,), use_container_width=True)
 
-# 4. Generate Standard Response
+# 5. Generate Standard Response
 # This only fires if the last message is from a user and it wasn't a clarification trigger
 if st.session_state["messages"] and st.session_state["messages"][-1]["role"] == "user" and not st.session_state[
 "feedback_pending"]:
