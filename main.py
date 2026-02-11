@@ -65,44 +65,41 @@ def generate_ai_response(interaction_type):
             full_res = st.write_stream(
                 ai_manager.get_response_stream(st.session_state["messages"], AI_CONFIG["system_instruction"]))
 
-    st.session_state["messages"].append({"role": "assistant", "content": full_res})
+    # Add interaction_type to the message object itself
+    st.session_state["messages"].append({
+        "role": "assistant",
+        "content": full_res,
+        "type": interaction_type
+    })
 
-    # Added None for the user_feedback parameter
     save_to_firebase(
-        st.session_state["current_user"],
-        AI_CONFIG["active_model"],
-        st.session_state["messages"],
-        interaction_type,
-        None, # No feedback yet
-        st.session_state["session_id"]
+        st.session_state["current_user"], AI_CONFIG["active_model"],
+        st.session_state["messages"], interaction_type, st.session_state["session_id"]
     )
     st.session_state["feedback_pending"] = True
     st.rerun()
 
 
 def handle_feedback(understood: bool):
-    feedback_val = "Positive: User understood" if understood else "Negative: User needed clarification"
-
     if understood:
-        save_to_firebase(
-            st.session_state["current_user"],
-            AI_CONFIG["active_model"],
-            st.session_state["messages"],
-            "UNDERSTOOD_FEEDBACK",
-            feedback_val,  # Explicit feedback
-            st.session_state["session_id"]
-        )
+        # Log the feedback event
+        save_to_firebase(st.session_state["current_user"], AI_CONFIG["active_model"], st.session_state["messages"],
+                         "UNDERSTOOD_FEEDBACK", st.session_state["session_id"])
         st.session_state["feedback_pending"] = False
     else:
-        clarification_text = "I don't understand the previous explanation. Please break it down further."
-        st.session_state["messages"].append({"role": "user", "content": clarification_text})
+        # Append message with the specific 'CLARIFICATION_REQUEST' type
+        clarification_msg = "I don't understand the previous explanation. Please break it down further."
+        st.session_state["messages"].append({
+            "role": "user",
+            "content": clarification_msg,
+            "type": "CLARIFICATION_REQUEST"
+        })
 
         save_to_firebase(
             st.session_state["current_user"],
             AI_CONFIG["active_model"],
             st.session_state["messages"],
             "CLARIFICATION_REQUEST",
-            feedback_val,  # Explicit feedback
             st.session_state["session_id"]
         )
 
