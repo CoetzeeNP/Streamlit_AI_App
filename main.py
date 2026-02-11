@@ -80,31 +80,32 @@ def generate_ai_response(interaction_type):
 
 def handle_feedback(understood: bool):
     if understood:
-        # Pass True to the new feedback_value parameter
         save_to_firebase(
             st.session_state["current_user"],
             AI_CONFIG["active_model"],
             st.session_state["messages"],
-            "GENERATED_RESPONSE",
+            "FEEDBACK_POSITIVE", # Changed name for clarity in logs
             st.session_state["session_id"],
             feedback_value=True
         )
         st.session_state["feedback_pending"] = False
     else:
+        # 1. Add the "help" message to the list
         clarification_text = "I don't understand the previous explanation. Please break it down further."
         st.session_state["messages"].append({"role": "user", "content": clarification_text})
 
-        st.session_state["trigger_clarification"] = True
-
-        # Pass False to the new feedback_value parameter
+        # 2. Log the USER'S request for clarification
         save_to_firebase(
             st.session_state["current_user"],
             AI_CONFIG["active_model"],
             st.session_state["messages"],
-            "CLARIFICATION_REQUEST",
+            "CLARIFICATION_REQUEST", # This is the USER event
             st.session_state["session_id"],
             feedback_value=False
         )
+
+        # 3. Set triggers for the NEXT AI response
+        st.session_state["trigger_clarification"] = True
         st.session_state["feedback_pending"] = False
 
 
@@ -183,9 +184,9 @@ for msg in st.session_state["messages"]:
             label = st.session_state["current_user"] if msg["role"] == "user" else "Assistant"
             st.markdown(f"**{label}:**\n\n{msg['content']}")
 
-# 2. Handle Clarification Response (Triggered by handle_feedback)
 if st.session_state.get("trigger_clarification"):
     st.session_state["trigger_clarification"] = False
+    # This explicitly logs the NEXT AI message as a CLARIFICATION_RESPONSE
     generate_ai_response("CLARIFICATION_RESPONSE")
 
 # 3. Chat Input
@@ -213,6 +214,10 @@ if st.session_state["feedback_pending"]:
 
 # 5. Generate Standard Response
 # This only fires if the last message is from a user and it wasn't a clarification trigger
-if st.session_state["messages"] and st.session_state["messages"][-1]["role"] == "user" and not st.session_state[
-"feedback_pending"]:
+if (
+    st.session_state["messages"]
+    and st.session_state["messages"][-1]["role"] == "user"
+    and not st.session_state["feedback_pending"]
+    and not st.session_state.get("trigger_clarification") # Add this check
+):
     generate_ai_response("GENERATED_RESPONSE")
