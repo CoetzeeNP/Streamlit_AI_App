@@ -203,12 +203,6 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
     )
     st.rerun()
 
-# 4. Generate Standard Response
-# This only fires if the last message is from a user and it wasn't a clarification trigger
-if st.session_state["messages"] and st.session_state["messages"][-1]["role"] == "user" and not st.session_state[
-    "feedback_pending"]:
-    generate_ai_response("GENERATED_RESPONSE")
-
 # 5. Feedback UI
 if st.session_state["feedback_pending"]:
     st.divider()
@@ -216,3 +210,9 @@ if st.session_state["feedback_pending"]:
     c1, c2 = st.columns(2)
     c1.button("I understand!", on_click=handle_feedback, args=(True,), use_container_width=True)
     c2.button("I need more help!", on_click=handle_feedback, args=(False,), use_container_width=True)
+
+# 4. Generate Standard Response
+# This only fires if the last message is from a user and it wasn't a clarification trigger
+if st.session_state["messages"] and st.session_state["messages"][-1]["role"] == "user" and not st.session_state[
+"feedback_pending"]:
+    generate_ai_response("GENERATED_RESPONSE")
