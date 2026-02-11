@@ -66,7 +66,6 @@ def generate_ai_response(interaction_type):
             full_res = ""
             # Initialize with default, will be updated by the stream
             actual_model = AI_CONFIG["active_model"]
-
             placeholder = st.empty()
 
             # The generator yields (token, model_label)
@@ -75,16 +74,17 @@ def generate_ai_response(interaction_type):
                     AI_CONFIG["system_instruction"]
             ):
                 full_res += chunk
-                actual_model = model_label  # Updates to 'ChatGPT 5.2' if Gemini fails
+                actual_model = model_label  # This captures the failover to ChatGPT
                 placeholder.markdown(full_res + "▌")
 
-            placeholder.markdown(full_res)
+            placeholder.markdown(full_res)  # Remove cursor
 
-    # 1. Update Session State
+    # 1. Store the response and the SPECIFIC model used
     st.session_state["messages"].append({"role": "assistant", "content": full_res})
+    st.session_state["last_model_used"] = actual_model  # <--- ADD THIS
     st.session_state["feedback_pending"] = True
 
-    # 2. LOGGING: Use actual_model (the one that actually answered)
+    # 2. LOGGING: Use actual_model
     save_to_firebase(
         st.session_state["current_user"],
         actual_model,
@@ -93,7 +93,7 @@ def generate_ai_response(interaction_type):
         st.session_state["session_id"]
     )
 
-    # 3. Final Rerun to refresh UI and show feedback buttons
+    # 3. Final Rerun to refresh UI
     st.rerun()
 
     st.session_state["messages"].append({"role": "assistant", "content": full_res})
@@ -112,28 +112,26 @@ def generate_ai_response(interaction_type):
 def handle_feedback(understood: bool):
     user_id = st.session_state["current_user"]
     session_id = st.session_state["session_id"]
+    # Get the model that actually sent the last message
+    model_to_log = st.session_state.get("last_model_used", AI_CONFIG["active_model"])
 
     if understood:
-        # User understood the LAST message (len - 1)
-        save_to_firebase(user_id, AI_CONFIG["active_model"], st.session_state["messages"],
+        save_to_firebase(user_id, model_to_log, st.session_state["messages"],
                          "GENERATED_RESPONSE", session_id, feedback_value=True)
         st.session_state["feedback_pending"] = False
     else:
-        # 1. Add the "help" text to session state
         clarification_text = "I don't understand the previous explanation. Please break it down further."
         st.session_state["messages"].append({"role": "user", "content": clarification_text})
 
-        # 2. UPDATE the previous AI message to say "user_understood: False"
         update_previous_feedback(user_id, session_id, st.session_state["messages"], False)
 
-        # 3. LOG the new Clarification Request normally
         save_to_firebase(
             user_id,
-            AI_CONFIG["active_model"],
+            model_to_log, # Use the correct model here too
             st.session_state["messages"],
             "CLARIFICATION_REQUEST",
             session_id,
-            feedback_value=None # This message itself doesn't need a feedback value
+            feedback_value=None
         )
 
         st.session_state["trigger_clarification"] = True
