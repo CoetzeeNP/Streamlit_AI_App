@@ -95,12 +95,20 @@ with st.sidebar:
             controller.set('student_auth_id', u_id)
             st.session_state.update({"authenticated": True, "current_user": u_id})
             st.rerun()
-    else:
-        st.write(f"**Logged in as:** {st.session_state['current_user']}")
-        if st.button("Logout", use_container_width=True):
-            st.cache_data.clear()
-            st.session_state.clear()
-            st.rerun()
+        else:
+            st.write(f"**Logged in as:** {st.session_state['current_user']}")
+
+            # Logout and Feedback buttons side-by-side
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Logout", use_container_width=True):
+                    st.cache_data.clear()
+                    st.session_state.clear()
+                    st.rerun()
+            with col2:
+                st.link_button("Feedback",
+                               "https://forms.office.com/Pages/ResponsePage.aspx?id=...",
+                               use_container_width=True)
 
         st.divider()
         st.subheader("Chat History")
