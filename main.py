@@ -66,6 +66,8 @@ def generate_ai_response(interaction_type):
                 ai_manager.get_response_stream(st.session_state["messages"], AI_CONFIG["system_instruction"]))
 
     st.session_state["messages"].append({"role": "assistant", "content": full_res})
+
+    # Logs the AI's response (GENERATED_RESPONSE or CLARIFICATION_RESPONSE)
     save_to_firebase(
         st.session_state["current_user"], AI_CONFIG["active_model"],
         st.session_state["messages"], interaction_type, st.session_state["session_id"]
@@ -80,8 +82,19 @@ def handle_feedback(understood: bool):
                          "UNDERSTOOD_FEEDBACK", st.session_state["session_id"])
         st.session_state["feedback_pending"] = False
     else:
-        st.session_state["messages"].append(
-            {"role": "user", "content": "I don't understand the previous explanation. Please break it down further."})
+        # 1. Append the clarification message
+        clarification_text = "I don't understand the previous explanation. Please break it down further."
+        st.session_state["messages"].append({"role": "user", "content": clarification_text})
+
+        # 2. Log this specific user action as a CLARIFICATION_REQUEST
+        save_to_firebase(
+            st.session_state["current_user"],
+            AI_CONFIG["active_model"],
+            st.session_state["messages"],
+            "CLARIFICATION_REQUEST",
+            st.session_state["session_id"]
+        )
+
         st.session_state["trigger_clarification"] = True
         st.session_state["feedback_pending"] = False
 
@@ -154,30 +167,48 @@ if not st.session_state["authenticated"]:
     st.warning("Please login via the sidebar.")
     st.stop()
 
-# Display Chat History
+# --- 6. Main Chat UI ---
+st.image("combined_logo.jpg")
+st.title("Business Planning Assistant")
+
+if not st.session_state["authenticated"]:
+    st.warning("Please login via the sidebar.")
+    st.stop()
+
+# 1. Display Chat History
 for msg in st.session_state["messages"]:
     with st.chat_message(msg["role"]):
         with st.container(border=True):
             label = st.session_state["current_user"] if msg["role"] == "user" else "Assistant"
             st.markdown(f"**{label}:**\n\n{msg['content']}")
 
-# Handle Clarification Requests
+# 2. Handle Clarification Response (Triggered by handle_feedback)
 if st.session_state.get("trigger_clarification"):
     st.session_state["trigger_clarification"] = False
     generate_ai_response("CLARIFICATION_RESPONSE")
 
-# Chat Input
+# 3. Chat Input
 input_msg = "Please provide feedback..." if st.session_state["feedback_pending"] else "Ask about your business plan..."
 if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pending"]):
     st.session_state["messages"].append({"role": "user", "content": prompt})
+
+    # Immediately log the user's manual input
+    save_to_firebase(
+        st.session_state["current_user"],
+        AI_CONFIG["active_model"],
+        st.session_state["messages"],
+        "USER_REQUEST",
+        st.session_state["session_id"]
+    )
     st.rerun()
 
-# Generate response if last message is from user and no feedback is pending
+# 4. Generate Standard Response
+# This only fires if the last message is from a user and it wasn't a clarification trigger
 if st.session_state["messages"] and st.session_state["messages"][-1]["role"] == "user" and not st.session_state[
     "feedback_pending"]:
-    generate_ai_response("INITIAL_RESPONSE")
+    generate_ai_response("GENERATED_RESPONSE")
 
-# Feedback UI
+# 5. Feedback UI
 if st.session_state["feedback_pending"]:
     st.divider()
     st.info("Did you understand the explanation?")
