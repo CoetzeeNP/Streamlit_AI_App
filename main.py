@@ -180,9 +180,14 @@ with st.sidebar:
                 else:
                     st.info("No preview available.")
 
-            if st.button("🔄 Load & Continue", type="primary", use_container_width=True):
-                load_selected_chat(st.session_state['current_user'], sel_key)
-                st.rerun()
+
+            def trigger_load_chat(user_id, session_key):
+                if st.session_state.get("session_id") == session_key:
+                    return  # Do nothing, it's already loaded
+
+                load_selected_chat(user_id, session_key)
+                st.session_state["session_id"] = session_key
+                st.session_state["feedback_pending"] = False  # Reset UI state
 
         if st.button("New Chat", use_container_width=True):
             st.session_state.update(
