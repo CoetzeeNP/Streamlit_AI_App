@@ -5,7 +5,9 @@ from google.genai import types
 from openai import OpenAI as OpenAIClient
 
 
-# Abstract Base Class
+# ==========================================
+# 1. ABSTRACT INTERFACE
+# ==========================================
 class AIStrategy(ABC):
     @abstractmethod
     def generate_stream(self, model_id, chat_history, system_instruction):
@@ -13,7 +15,9 @@ class AIStrategy(ABC):
         pass
 
 
-# Concrete Strategy for Google Gemini
+# ==========================================
+# 2. GOOGLE GEMINI IMPLEMENTATION
+# ==========================================
 class GeminiStrategy(AIStrategy):
     def generate_stream(self, model_id, chat_history, system_instruction):
         client = genai.Client(api_key=st.secrets["api_keys"]["google"])
@@ -37,7 +41,9 @@ class GeminiStrategy(AIStrategy):
                 yield chunk.text
 
 
-# Concrete Strategy for OpenAI
+# ==========================================
+# 3. OPENAI IMPLEMENTATION
+# ==========================================
 class OpenAIStrategy(AIStrategy):
     def generate_stream(self, model_id, chat_history, system_instruction):
         oa_client = OpenAIClient(api_key=st.secrets["api_keys"]["openai"])
@@ -57,18 +63,22 @@ class OpenAIStrategy(AIStrategy):
             if chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
 
-
+# ==========================================
+# 4. ORCHESTRATION & FAILOVER MANAGER
+# ==========================================
 class AIManager:
     def __init__(self, model_label):
+        # Define a primary model and a backup based on the current primary model
         self.failover_order = [
             model_label,
             "ChatGPT 5.2" if model_label == "gemini-3-pro-preview" else "gemini-3-pro-preview"
         ]
+        # Map labels to their respective Strategy Class and specific Model ID
         self.strategies = {
             "gemini-3-pro-preview": (GeminiStrategy(), "gemini-3-pro-preview"),
             "ChatGPT 5.2": (OpenAIStrategy(), "gpt-5")
         }
-
+    #Tries models in the failover_order. If one fails, it moves to the next.
     def get_response_stream(self, chat_history, system_instruction):
         for label in self.failover_order:
             try:
@@ -78,6 +88,8 @@ class AIManager:
                     yield chunk, label  # Yielding the TUPLE
                 return
             except Exception as e:
+                # If this was the last available model, yield the error message
                 if label == self.failover_order[-1]:
                     yield f"Error: {str(e)}", label
+                    # Otherwise, the loop continues to the next model in failover_order
                 continue
