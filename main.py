@@ -115,21 +115,27 @@ with st.sidebar:
             session_data = db_ref.child("active_sessions").child(clean_id).get()
             current_ts = time.time()
 
-            # Hybrid Lock Logic: Unlock if last heartbeat > 3 minutes (180s)
+            # 1. Determine Lock Status
             is_locked = False
             if session_data and isinstance(session_data, dict):
+                # If last seen was less than 3 mins ago, it's technically "active"
                 if (current_ts - session_data.get("last_seen", 0)) < 180:
                     is_locked = True
 
+            # 2. Determine Button Label and Color
+            btn_label = "Login"
+            btn_help = "Standard login"
             if is_locked:
-                st.error("This ID is active elsewhere.")
-                if st.button("Force Login (Override)", use_container_width=True):
-                    is_locked = False
+                st.warning("This ID is currently active elsewhere.")
+                btn_label = "Force Login (Override Active Session)"
+                btn_help = "Use this if your previous session crashed or you closed the tab."
 
-            if not is_locked and st.button("Login", use_container_width=True):
+            # 3. Single Button Action
+            if st.button(btn_label, use_container_width=True, help=btn_help):
                 if u_id in AUTHORIZED_IDS:
+                    # Update/Overwrite the lock in Firebase
                     db_ref.child("active_sessions").child(clean_id).set({
-                        "last_seen": current_ts,
+                        "last_seen": time.time(),
                         "session_id": st.session_state["session_id"]
                     })
                     controller.set('student_auth_id', u_id)
@@ -137,21 +143,6 @@ with st.sidebar:
                     st.rerun()
                 else:
                     st.error("Invalid Student ID.")
-    else:
-        # Update Heartbeat
-        clean_id = str(st.session_state['current_user']).replace(".", "_")
-        db_ref.child("active_sessions").child(clean_id).update({"last_seen": time.time()})
-
-        st.write(f"**Logged in as:** {st.session_state['current_user']}")
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("Logout", use_container_width=True):
-                db_ref.child("active_sessions").child(clean_id).delete()
-                st.cache_data.clear()
-                st.session_state.clear()
-                st.rerun()
-        with c2:
-            st.link_button("Feedback", "https://forms.office.com/...", use_container_width=True)
 
         st.divider()
         st.subheader("Chat History")
