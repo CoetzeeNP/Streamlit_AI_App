@@ -140,46 +140,54 @@ def handle_feedback(understood: bool):
 ###########################
 with st.sidebar:
     st.image("icdf.png")
-
-    # Initialize Firebase reference for sessions
     db_ref = get_firebase_connection()
 
     if not st.session_state["authenticated"]:
         u_id = st.text_input("Enter Student ID", type="password")
 
-        if st.button("Login", use_container_width=True):
-            if u_id in AUTHORIZED_IDS:
-                # 1. Sanitize ID for Firebase paths (replace dots with underscores)
-                clean_id = str(u_id).replace(".", "_")
+        if u_id:
+            clean_id = str(u_id).replace(".", "_")
+            # Check if this ID is currently flagged as active
+            is_active = db_ref.child("active_sessions").child(clean_id).get()
 
-                # 2. Check if user is already logged in elsewhere
-                is_active = db_ref.child("active_sessions").child(clean_id).get()
-
-                if is_active is True:
-                    st.error("This ID is already logged in on another device or tab.")
-                    st.info(
-                        "If you closed the previous window without logging out, please wait a few minutes or contact support.")
+            if st.button("Login", use_container_width=True):
+                if u_id in AUTHORIZED_IDS:
+                    if is_active:
+                        # Store the intent to force login in session state
+                        st.session_state["show_force_login"] = True
+                    else:
+                        # Standard clean login
+                        db_ref.child("active_sessions").child(clean_id).set(True)
+                        controller.set('student_auth_id', u_id)
+                        st.session_state.update({"authenticated": True, "current_user": u_id})
+                        st.rerun()
                 else:
-                    # 3. Lock the session in Firebase
+                    st.error("Invalid Student ID.")
+
+            # Show Force Login option if they are already logged in
+            if st.session_state.get("show_force_login"):
+                st.warning("This ID is active in another session.")
+                if st.button("Force Login (Logout other session)", type="primary", use_container_width=True):
+                    # Overwrite the lock
                     db_ref.child("active_sessions").child(clean_id).set(True)
-
-                    # 4. Standard Login Procedure
                     controller.set('student_auth_id', u_id)
-                    st.session_state.update({"authenticated": True, "current_user": u_id})
+                    st.session_state.update({
+                        "authenticated": True,
+                        "current_user": u_id,
+                        "show_force_login": False
+                    })
                     st.rerun()
-            else:
-                st.error("Invalid Student ID.")
-
     else:
+        # Check if someone else just forced a login with this ID
+        clean_id = str(st.session_state['current_user']).replace(".", "_")
+        # In a high-traffic app, you'd store a unique Session ID in the DB
+        # to see if THIS specific browser tab is still the authorized one.
+
         st.write(f"**Logged in as:** {st.session_state['current_user']}")
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Logout", use_container_width=True):
-                # 5. Unlock the session in Firebase
-                clean_id = str(st.session_state['current_user']).replace(".", "_")
                 db_ref.child("active_sessions").child(clean_id).set(False)
-
-                # Clear state
                 st.cache_data.clear()
                 st.session_state.clear()
                 st.rerun()
