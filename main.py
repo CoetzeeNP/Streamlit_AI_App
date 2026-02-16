@@ -107,13 +107,13 @@ def trigger_load_chat(user_id, session_key):
 
 # Handles the states when users click either the "I understand" or "I need more help"
 def handle_feedback(understood: bool):
+    # Set this immediately to block concurrent clicks
+    st.session_state["processing_feedback"] = True
     st.session_state["feedback_pending"] = False
-    with st.spinner("Logging feedback..."):
-        st.session_state["processing_feedback"] = True
 
+    with st.spinner("Logging feedback..."):
         user_id = st.session_state["current_user"]
         session_id = st.session_state["session_id"]
-
         model_to_log = st.session_state.get("last_model_used", AI_CONFIG["active_model"])
 
         if understood:
@@ -122,20 +122,11 @@ def handle_feedback(understood: bool):
         else:
             clarification_text = "I don't understand the previous explanation. Please break it down further."
             st.session_state["messages"].append({"role": "user", "content": clarification_text})
-
             update_previous_feedback(user_id, session_id, st.session_state["messages"], False)
-
-            save_to_firebase(
-                user_id,
-                model_to_log, # Use the correct model here too
-                st.session_state["messages"],
-                "CLARIFICATION_REQUEST",
-                session_id,
-                feedback_value=None
-            )
-
+            save_to_firebase(user_id, model_to_log, st.session_state["messages"],
+                             "CLARIFICATION_REQUEST", session_id, feedback_value=None)
             st.session_state["trigger_clarification"] = True
-        st.session_state["feedback_pending"] = False
+    st.session_state["processing_feedback"] = False
 
 ###########################
 ###        Sidebar      ###
@@ -246,8 +237,10 @@ if st.session_state["feedback_pending"]:
     st.divider()
     st.info("Did you understand the explanation?")
 
-    # Check if we are currently mid-callback
     is_disabled = st.session_state.get("processing_feedback", False)
+
+    # Use the length of messages to create a unique ID for this specific feedback instance
+    msg_count = len(st.session_state["messages"])
 
     c1, c2 = st.columns(2)
     c1.button(
@@ -255,14 +248,16 @@ if st.session_state["feedback_pending"]:
         on_click=handle_feedback,
         args=(True,),
         use_container_width=True,
-        disabled=is_disabled
+        disabled=is_disabled,
+        key=f"btn_yes_{msg_count}"  # Unique key prevents state carry-over
     )
     c2.button(
         "I need more help!",
         on_click=handle_feedback,
         args=(False,),
         use_container_width=True,
-        disabled=is_disabled
+        disabled=is_disabled,
+        key=f"btn_no_{msg_count}"  # Unique key prevents state carry-over
     )
 
 
