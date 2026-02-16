@@ -1,5 +1,4 @@
 import streamlit as st
-import uuid
 from datetime import datetime
 from ai_strategy import AIManager
 from database import save_to_firebase, get_firebase_connection, load_selected_chat, update_previous_feedback
@@ -55,38 +54,6 @@ def get_cached_preview(user_id, session_key):
         return db_ref.child("logs").child(clean_uid).child(session_key).child("transcript").child("0").get()
     except Exception:
         return None
-
-
-# --- NEW SESSION SECURITY FUNCTIONS ---
-
-def set_active_session_lock(user_id):
-    """Registers this specific browser tab as the 'active' one in Firebase."""
-    new_id = str(uuid.uuid4())
-    db_ref = get_firebase_connection()
-    clean_uid = str(user_id).replace(".", "_")
-    # Store the unique ID in Firebase
-    db_ref.child("active_sessions").child(clean_uid).set(new_id)
-    # Store the same ID in the local browser state
-    st.session_state["browser_tab_id"] = new_id
-    return new_id
-
-
-def verify_session_integrity():
-    """Checks if another device has taken over the session."""
-    if not st.session_state.get("authenticated"):
-        return True
-
-    db_ref = get_firebase_connection()
-    clean_uid = str(st.session_state["current_user"]).replace(".", "_")
-    active_id_in_db = db_ref.child("active_sessions").child(clean_uid).get()
-
-    # If the ID in the browser doesn't match the ID in the DB, someone else logged in
-    if active_id_in_db and active_id_in_db != st.session_state.get("browser_tab_id"):
-        return False
-    return True
-
-
-# --- END SECURITY FUNCTIONS ---
 
 # Unified function to get AI response, stream to UI, and log to DB.
 # Consolidated to prevent duplicate messages and redundant reruns.
@@ -176,25 +143,11 @@ with st.sidebar:
     if not st.session_state["authenticated"]:
         u_id = st.text_input("Enter Student ID", type="password")
         if st.button("Login", use_container_width=True) and u_id in AUTHORIZED_IDS:
-            # 1. Establish the Session Lock first
-            set_active_session_lock(u_id)
-            # 2. Update state and cookies
             controller.set('student_auth_id', u_id)
             st.session_state.update({"authenticated": True, "current_user": u_id})
             st.rerun()
     else:
-        # Logout Logic
         st.write(f"**Logged in as:** {st.session_state['current_user']}")
-        if st.button("Logout", use_container_width=True):
-            # Clear the lock in Firebase on logout
-            db_ref = get_firebase_connection()
-            clean_uid = str(st.session_state["current_user"]).replace(".", "_")
-            db_ref.child("active_sessions").child(clean_uid).remove()
-
-            st.cache_data.clear()
-            st.session_state.clear()
-            controller.remove('student_auth_id')
-            st.rerun()
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Logout", use_container_width=True):
@@ -304,5 +257,5 @@ if (
 ):
     generate_ai_response("GENERATED_RESPONSE")
 ###########################
-###        MAIN      ###
+###        Main      ###
 ###########################
