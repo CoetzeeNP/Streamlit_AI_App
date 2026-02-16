@@ -140,17 +140,46 @@ def handle_feedback(understood: bool):
 ###########################
 with st.sidebar:
     st.image("icdf.png")
+
+    # Initialize Firebase reference for sessions
+    db_ref = get_firebase_connection()
+
     if not st.session_state["authenticated"]:
         u_id = st.text_input("Enter Student ID", type="password")
-        if st.button("Login", use_container_width=True) and u_id in AUTHORIZED_IDS:
-            controller.set('student_auth_id', u_id)
-            st.session_state.update({"authenticated": True, "current_user": u_id})
-            st.rerun()
+
+        if st.button("Login", use_container_width=True):
+            if u_id in AUTHORIZED_IDS:
+                # 1. Sanitize ID for Firebase paths (replace dots with underscores)
+                clean_id = str(u_id).replace(".", "_")
+
+                # 2. Check if user is already logged in elsewhere
+                is_active = db_ref.child("active_sessions").child(clean_id).get()
+
+                if is_active is True:
+                    st.error("This ID is already logged in on another device or tab.")
+                    st.info(
+                        "If you closed the previous window without logging out, please wait a few minutes or contact support.")
+                else:
+                    # 3. Lock the session in Firebase
+                    db_ref.child("active_sessions").child(clean_id).set(True)
+
+                    # 4. Standard Login Procedure
+                    controller.set('student_auth_id', u_id)
+                    st.session_state.update({"authenticated": True, "current_user": u_id})
+                    st.rerun()
+            else:
+                st.error("Invalid Student ID.")
+
     else:
         st.write(f"**Logged in as:** {st.session_state['current_user']}")
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Logout", use_container_width=True):
+                # 5. Unlock the session in Firebase
+                clean_id = str(st.session_state['current_user']).replace(".", "_")
+                db_ref.child("active_sessions").child(clean_id).set(False)
+
+                # Clear state
                 st.cache_data.clear()
                 st.session_state.clear()
                 st.rerun()
