@@ -1,5 +1,6 @@
 import streamlit as st
 from datetime import datetime
+import time
 from ai_strategy import AIManager
 from database import save_to_firebase, get_firebase_connection, load_selected_chat, update_previous_feedback
 from streamlit_cookies_controller import CookieController
@@ -147,39 +148,48 @@ with st.sidebar:
     if not st.session_state["authenticated"]:
         u_id = st.text_input("Enter Student ID", type="password")
 
-        if st.button("Login", use_container_width=True):
-            if u_id in AUTHORIZED_IDS:
-                # 1. Sanitize ID for Firebase paths (replace dots with underscores)
-                clean_id = str(u_id).replace(".", "_")
+        if u_id:
+            clean_id = str(u_id).replace(".", "_")
+            session_data = db_ref.child("active_sessions").child(clean_id).get()
+            current_ts = time.time()
 
-                # 2. Check if user is already logged in elsewhere
-                is_active = db_ref.child("active_sessions").child(clean_id).get()
+            # Check if session is actually locked
+            is_locked = False
+            if session_data and isinstance(session_data, dict):
+                last_seen = session_data.get("last_seen", 0)
+                # Lock is valid only if it happened in the last 3 minutes
+                if (current_ts - last_seen) < 180:
+                    is_locked = True
 
-                if is_active is True:
-                    st.error("This ID is already logged in on another device or tab.")
-                    st.info(
-                        "If you closed the previous window without logging out, please wait a few minutes or contact support.")
-                else:
-                    # 3. Lock the session in Firebase
-                    db_ref.child("active_sessions").child(clean_id).set(True)
+            if is_locked:
+                st.error("This ID is active on another device.")
+                if st.button("Force Login (Override)", use_container_width=True):
+                    is_locked = False  # Bypass check
 
-                    # 4. Standard Login Procedure
+            if not is_locked and st.button("Login", use_container_width=True):
+                if u_id in AUTHORIZED_IDS:
+                    # Set the hybrid lock: Timestamp + Session ID
+                    db_ref.child("active_sessions").child(clean_id).set({
+                        "last_seen": current_ts,
+                        "session_id": st.session_state["session_id"]
+                    })
                     controller.set('student_auth_id', u_id)
                     st.session_state.update({"authenticated": True, "current_user": u_id})
                     st.rerun()
-            else:
-                st.error("Invalid Student ID.")
+                else:
+                    st.error("Invalid Student ID.")
 
     else:
         st.write(f"**Logged in as:** {st.session_state['current_user']}")
+        # HEARTBEAT: Update timestamp every time the app reruns
+        clean_id = str(st.session_state['current_user']).replace(".", "_")
+        db_ref.child("active_sessions").child(clean_id).update({"last_seen": time.time()})
+
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Logout", use_container_width=True):
-                # 5. Unlock the session in Firebase
-                clean_id = str(st.session_state['current_user']).replace(".", "_")
-                db_ref.child("active_sessions").child(clean_id).set(False)
-
-                # Clear state
+                # Unlock completely on manual logout
+                db_ref.child("active_sessions").child(clean_id).delete()
                 st.cache_data.clear()
                 st.session_state.clear()
                 st.rerun()
@@ -240,6 +250,16 @@ st.title("Business Planning Assistant")
 if not st.session_state["authenticated"]:
     st.warning("Please login via the sidebar.")
     st.stop()
+
+if st.session_state["authenticated"]:
+    # Verify this session still owns the lock
+    clean_id = str(st.session_state['current_user']).replace(".", "_")
+    current_lock = db_ref.child("active_sessions").child(clean_id).get()
+
+    if current_lock and current_lock.get("session_id") != st.session_state["session_id"]:
+        st.warning("You have been logged in from another device. This session is now inactive.")
+        st.session_state.clear()
+        st.stop()
 
 # 1. Display Chat History
 for msg in st.session_state["messages"]:
