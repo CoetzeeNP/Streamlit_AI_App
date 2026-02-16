@@ -126,7 +126,10 @@ def handle_feedback(understood: bool):
             save_to_firebase(user_id, model_to_log, st.session_state["messages"],
                              "CLARIFICATION_REQUEST", session_id, feedback_value=None)
             st.session_state["trigger_clarification"] = True
+
+    # Reset lock and force UI refresh
     st.session_state["processing_feedback"] = False
+    st.rerun()
 
 ###########################
 ###        Sidebar      ###
