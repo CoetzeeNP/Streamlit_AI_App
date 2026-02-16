@@ -3,9 +3,6 @@ from datetime import datetime
 from ai_strategy import AIManager
 from database import save_to_firebase, get_firebase_connection, load_selected_chat, update_previous_feedback
 from streamlit_cookies_controller import CookieController
-import time
-# --- Configuration ---
-HEARTBEAT_THRESHOLD = 120  # Seconds before a session is considered "dead"
 
 # Setup & Configuration
 st.set_page_config(layout="wide", page_title="Business Planning Assistant")
@@ -57,12 +54,6 @@ def get_cached_preview(user_id, session_key):
         return db_ref.child("logs").child(clean_uid).child(session_key).child("transcript").child("0").get()
     except Exception:
         return None
-
-def update_heartbeat(u_id):
-    """Updates the timestamp in Firebase to keep the session alive."""
-    db_ref = get_firebase_connection()
-    clean_id = str(u_id).replace(".", "_")
-    db_ref.child("active_sessions").child(clean_id).set(time.time())
 
 # Unified function to get AI response, stream to UI, and log to DB.
 # Consolidated to prevent duplicate messages and redundant reruns.
@@ -149,6 +140,8 @@ def handle_feedback(understood: bool):
 ###########################
 with st.sidebar:
     st.image("icdf.png")
+
+    # Initialize Firebase reference for sessions
     db_ref = get_firebase_connection()
 
     if not st.session_state["authenticated"]:
@@ -156,35 +149,37 @@ with st.sidebar:
 
         if st.button("Login", use_container_width=True):
             if u_id in AUTHORIZED_IDS:
+                # 1. Sanitize ID for Firebase paths (replace dots with underscores)
                 clean_id = str(u_id).replace(".", "_")
-                last_heartbeat = db_ref.child("active_sessions").child(clean_id).get()
 
-                current_time = time.time()
+                # 2. Check if user is already logged in elsewhere
+                is_active = db_ref.child("active_sessions").child(clean_id).get()
 
-                # Check if session is active AND recent
-                if last_heartbeat and (current_time - last_heartbeat < HEARTBEAT_THRESHOLD):
-                    seconds_left = int(HEARTBEAT_THRESHOLD - (current_time - last_heartbeat))
-                    st.error(f"Account active in another window. Try again in {seconds_left}s or close other tabs.")
+                if is_active is True:
+                    st.error("This ID is already logged in on another device or tab.")
+                    st.info(
+                        "If you closed the previous window without logging out, please wait a few minutes or contact support.")
                 else:
-                    # Allow login & set initial heartbeat
-                    update_heartbeat(u_id)
+                    # 3. Lock the session in Firebase
+                    db_ref.child("active_sessions").child(clean_id).set(True)
+
+                    # 4. Standard Login Procedure
                     controller.set('student_auth_id', u_id)
                     st.session_state.update({"authenticated": True, "current_user": u_id})
                     st.rerun()
             else:
                 st.error("Invalid Student ID.")
-    else:
-        # HEARTBEAT UPDATE: This runs every time the script reruns (user interacts)
-        update_heartbeat(st.session_state['current_user'])
 
+    else:
         st.write(f"**Logged in as:** {st.session_state['current_user']}")
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Logout", use_container_width=True):
-                # Clear heartbeat on logout
+                # 5. Unlock the session in Firebase
                 clean_id = str(st.session_state['current_user']).replace(".", "_")
-                db_ref.child("active_sessions").child(clean_id).delete()
+                db_ref.child("active_sessions").child(clean_id).set(False)
 
+                # Clear state
                 st.cache_data.clear()
                 st.session_state.clear()
                 st.rerun()
