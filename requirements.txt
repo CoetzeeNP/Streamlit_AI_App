@@ -3,3 +3,4 @@ firebase-admin
 google-genai
 openai
 streamlit-cookies-controller
+streamlit-autorefresh
