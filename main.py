@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import datetime
 from ai_strategy import AIManager
-from database import save_to_firebase, get_firebase_connection, load_selected_chat, update_previous_feedback
+from database import save_to_firebase, load_selected_chat, update_previous_feedback
 from streamlit_cookies_controller import CookieController
 
 # Setup & Configuration
@@ -107,31 +107,34 @@ def trigger_load_chat(user_id, session_key):
 
 # Handles the states when users click either the "I understand" or "I need more help"
 def handle_feedback(understood: bool):
-    user_id = st.session_state["current_user"]
-    session_id = st.session_state["session_id"]
+    st.session_state["feedback_pending"] = False
+    with st.spinner("Logging feedback..."):
+        st.session_state["processing_feedback"] = True
 
-    model_to_log = st.session_state.get("last_model_used", AI_CONFIG["active_model"])
+        user_id = st.session_state["current_user"]
+        session_id = st.session_state["session_id"]
 
-    if understood:
-        save_to_firebase(user_id, model_to_log, st.session_state["messages"],
-                         "GENERATED_RESPONSE", session_id, feedback_value=True)
-        st.session_state["feedback_pending"] = False
-    else:
-        clarification_text = "I don't understand the previous explanation. Please break it down further."
-        st.session_state["messages"].append({"role": "user", "content": clarification_text})
+        model_to_log = st.session_state.get("last_model_used", AI_CONFIG["active_model"])
 
-        update_previous_feedback(user_id, session_id, st.session_state["messages"], False)
+        if understood:
+            save_to_firebase(user_id, model_to_log, st.session_state["messages"],
+                             "GENERATED_RESPONSE", session_id, feedback_value=True)
+        else:
+            clarification_text = "I don't understand the previous explanation. Please break it down further."
+            st.session_state["messages"].append({"role": "user", "content": clarification_text})
 
-        save_to_firebase(
-            user_id,
-            model_to_log, # Use the correct model here too
-            st.session_state["messages"],
-            "CLARIFICATION_REQUEST",
-            session_id,
-            feedback_value=None
-        )
+            update_previous_feedback(user_id, session_id, st.session_state["messages"], False)
 
-        st.session_state["trigger_clarification"] = True
+            save_to_firebase(
+                user_id,
+                model_to_log, # Use the correct model here too
+                st.session_state["messages"],
+                "CLARIFICATION_REQUEST",
+                session_id,
+                feedback_value=None
+            )
+
+            st.session_state["trigger_clarification"] = True
         st.session_state["feedback_pending"] = False
 
 ###########################
@@ -242,9 +245,26 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
 if st.session_state["feedback_pending"]:
     st.divider()
     st.info("Did you understand the explanation?")
+
+    # Check if we are currently mid-callback
+    is_disabled = st.session_state.get("processing_feedback", False)
+
     c1, c2 = st.columns(2)
-    c1.button("I understand!", on_click=handle_feedback, args=(True,), use_container_width=True)
-    c2.button("I need more help!", on_click=handle_feedback, args=(False,), use_container_width=True)
+    c1.button(
+        "I understand!",
+        on_click=handle_feedback,
+        args=(True,),
+        use_container_width=True,
+        disabled=is_disabled
+    )
+    c2.button(
+        "I need more help!",
+        on_click=handle_feedback,
+        args=(False,),
+        use_container_width=True,
+        disabled=is_disabled
+    )
+
 
 # Generate Standard Response
 # This only fires if the last message is from a user and it wasn't a clarification trigger
