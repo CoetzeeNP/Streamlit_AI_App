@@ -189,27 +189,32 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
     st.rerun()
 
 # 5. Feedback UI — only shown when a response is complete and not currently generating
+if (
+        st.session_state["messages"]
+        and st.session_state["messages"][-1]["role"] == "assistant"
+        and st.session_state["feedback_pending"]
+        and st.session_state.get("is_generating", false)
+):
+    st.divider()
+    st.info("Did you understand the explanation?")
 
-st.divider()
-st.info("Did you understand the explanation?")
+    msg_count = len(st.session_state["messages"])
+    c1, c2 = st.columns(2)
 
-msg_count = len(st.session_state["messages"])
-c1, c2 = st.columns(2)
-
-c1.button(
-    "I understand!",
-    on_click=handle_feedback,
-    args=(True,),
-    use_container_width=True,
-    key=f"btn_yes_{msg_count}"
-)
-c2.button(
-    "I need more help!",
-    on_click=handle_feedback,
-    args=(False,),
-    use_container_width=True,
-    key=f"btn_no_{msg_count}"
-)
+    c1.button(
+        "I understand!",
+        on_click=handle_feedback,
+        args=(True,),
+        use_container_width=True,
+        key=f"btn_yes_{msg_count}"
+    )
+    c2.button(
+        "I need more help!",
+        on_click=handle_feedback,
+        args=(False,),
+        use_container_width=True,
+        key=f"btn_no_{msg_count}"
+    )
 
 # 6. Generate Standard Response
 if (
