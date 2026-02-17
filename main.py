@@ -75,6 +75,7 @@ def generate_ai_response(interaction_type):
         interaction_type,
         st.session_state["session_id"]
     )
+    st.session_state["processing_feedback"] = False  # safe to show new feedback buttons now
     st.rerun()
 
 
@@ -144,7 +145,6 @@ if not st.session_state["authenticated"]:
 #    so the feedback buttons will not render this cycle — no duplicate UI.
 if "pending_feedback_value" in st.session_state:
     understood = st.session_state.pop("pending_feedback_value")  # consume the flag
-    st.session_state["processing_feedback"] = False  # NEW — reset now that we've consumed it
 
     user_id = st.session_state["current_user"]
     session_id = st.session_state["session_id"]
@@ -155,6 +155,7 @@ if "pending_feedback_value" in st.session_state:
             user_id, model_to_log, st.session_state["messages"],
             "GENERATED_RESPONSE", session_id, feedback_value=True
         )
+        st.session_state["processing_feedback"] = False  # no further rerun needed, reset here
     else:
         clarification_text = "I don't understand the previous explanation. Please break it down further."
         st.session_state["messages"].append({"role": "user", "content": clarification_text})
