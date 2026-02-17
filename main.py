@@ -283,8 +283,8 @@ if (
     and not st.session_state["feedback_pending"]
     and not st.session_state.get("trigger_clarification") # Add this check
 ):
-    st.rerun()
     generate_ai_response("GENERATED_RESPONSE")
+    st.rerun()
 ###########################
 ###        Main      ###
 ###########################
