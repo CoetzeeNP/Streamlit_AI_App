@@ -75,7 +75,6 @@ def generate_ai_response(interaction_type):
     )
     st.rerun()
 
-
 ###########################
 ###        Sidebar      ###
 ###########################
@@ -179,21 +178,30 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
     )
     st.rerun()
 
-with st.form("feedback_form", clear_on_submit=True):
-    c1, c2 = st.columns(2)
+# 5. Feedback UI — only shown when a response is complete and not currently generating
+# 5. Feedback UI — only shown when a response is complete and not currently generating
+if (
+    st.session_state["messages"]
+    and st.session_state["messages"][-1]["role"] == "assistant"
+    and st.session_state["feedback_pending"]
+    and not st.session_state.get("is_generating", False)
+):
+    st.divider()
+    with st.form("feedback_form", clear_on_submit=True):
+        c1, c2 = st.columns(2)
 
-    understood = c1.form_submit_button("I understand!")
-    not_understood = c2.form_submit_button("I need more help!")
+        understood = c1.form_submit_button("I understand!")
+        not_understood = c2.form_submit_button("I need more help!")
 
-    if understood:
-        st.session_state["feedback_pending"] = False
-        st.session_state["pending_feedback_value"] = True
-        st.rerun()
+        if understood:
+            st.session_state["feedback_pending"] = False
+            st.session_state["pending_feedback_value"] = True
+            st.rerun()
 
-    if not_understood:
-        st.session_state["feedback_pending"] = False
-        st.session_state["pending_feedback_value"] = False
-        st.rerun()
+        if not_understood:
+            st.session_state["feedback_pending"] = False
+            st.session_state["pending_feedback_value"] = False
+            st.rerun()
 
 # 6. Generate Standard Response
 if (
