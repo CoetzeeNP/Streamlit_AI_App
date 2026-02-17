@@ -28,6 +28,7 @@ if "messages" not in st.session_state: st.session_state["messages"] = []
 if "feedback_pending" not in st.session_state: st.session_state["feedback_pending"] = False
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
 if "current_user" not in st.session_state: st.session_state["current_user"] = None
+if "processing_feedback" not in st.session_state: st.session_state["processing_feedback"] = False  # NEW
 
 # Persistence & Auth
 AUTHORIZED_IDS = st.secrets["AUTHORIZED_STUDENT_LIST"]
@@ -77,11 +78,13 @@ def generate_ai_response(interaction_type):
     st.rerun()
 
 
-# Callback: ONLY sets a flag — no heavy logic, no st.rerun().
-# Streamlit automatically reruns the full script after any on_click callback,
-# so the main body below will pick up "pending_feedback_value" and do the work.
+# Callback: ONLY sets flags — no heavy logic, no st.rerun().
+# Setting processing_feedback=True here causes the buttons to vanish immediately
+# on the rerun that Streamlit automatically triggers after any on_click callback,
+# BEFORE pending_feedback_value is consumed in the main body.
 def handle_feedback(understood: bool):
     st.session_state["feedback_pending"] = False
+    st.session_state["processing_feedback"] = True  # NEW — hides buttons immediately
     st.session_state["pending_feedback_value"] = understood
 
 
@@ -141,6 +144,7 @@ if not st.session_state["authenticated"]:
 #    so the feedback buttons will not render this cycle — no duplicate UI.
 if "pending_feedback_value" in st.session_state:
     understood = st.session_state.pop("pending_feedback_value")  # consume the flag
+    st.session_state["processing_feedback"] = False  # NEW — reset now that we've consumed it
 
     user_id = st.session_state["current_user"]
     session_id = st.session_state["session_id"]
@@ -161,7 +165,6 @@ if "pending_feedback_value" in st.session_state:
         )
 
         st.session_state["trigger_clarification"] = True
-    st.rerun()
 
 # 2. Display Chat History
 for msg in st.session_state["messages"]:
@@ -189,12 +192,15 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
     )
     st.rerun()
 
-# 5. Feedback UI — only shown when a response is complete and not currently generating
+# 5. Feedback UI — only shown when a response is complete, not generating, and not mid-processing.
+#    The processing_feedback flag ensures buttons vanish immediately on click rather than
+#    appearing greyed out during the rerun cycle.
 if (
         st.session_state["messages"]
         and st.session_state["messages"][-1]["role"] == "assistant"
         and st.session_state["feedback_pending"]
         and not st.session_state.get("is_generating", False)
+        and not st.session_state.get("processing_feedback", False)  # NEW
 ):
     st.divider()
     st.info("Did you understand the explanation?")
