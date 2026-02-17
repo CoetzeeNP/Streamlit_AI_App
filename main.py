@@ -92,7 +92,6 @@ def generate_ai_response(interaction_type):
         interaction_type,
         st.session_state["session_id"]
     )
-    st.rerun()
 
 
 # def trigger_load_chat(user_id, session_key):
