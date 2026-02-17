@@ -82,6 +82,7 @@ def generate_ai_response(interaction_type):
 def handle_feedback(understood: bool):
     st.session_state["feedback_pending"] = False
     st.session_state["pending_feedback_value"] = understood
+    st.rerun()
 
 
 ###########################
@@ -196,7 +197,6 @@ if (
 ):
     st.divider()
     st.info("Did you understand the explanation?")
-    st.rerun()
     msg_count = len(st.session_state["messages"])
     c1, c2 = st.columns(2)
 
