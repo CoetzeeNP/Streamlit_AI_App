@@ -5,8 +5,8 @@ from database import save_to_firebase, load_selected_chat, update_previous_feedb
 from streamlit_cookies_controller import CookieController
 
 # Setup & Configuration
-st.set_page_config(layout="wide", page_title="Business Planning Assistant")
-controller = CookieController()
+st.set_page_config(layout="wide", page_title="AI-frikaans Assistant")
+#controller = CookieController()
 
 # Custom CSS
 st.markdown("""
@@ -31,11 +31,11 @@ if "current_user" not in st.session_state: st.session_state["current_user"] = No
 
 # Persistence & Auth
 AUTHORIZED_IDS = st.secrets["AUTHORIZED_STUDENT_LIST"]
-cached_uid = controller.get('student_auth_id')
+#cached_uid = controller.get('student_auth_id')
 
-if cached_uid and not st.session_state["authenticated"]:
-    if cached_uid in AUTHORIZED_IDS:
-        st.session_state.update({"authenticated": True, "current_user": cached_uid})
+#if cached_uid and not st.session_state["authenticated"]:
+#    if cached_uid in AUTHORIZED_IDS:
+#        st.session_state.update({"authenticated": True, "current_user": cached_uid})
 
 # # Helper Functions
 # @st.cache_data(ttl=1800)
@@ -60,7 +60,7 @@ def generate_ai_response(interaction_type):
 
     with st.chat_message("assistant"):
         with st.container(border=True):
-            st.markdown("**Business Planning Assistant:**")
+            st.markdown("**AI-frikaans Assistant:**")
             ai_manager = AIManager(AI_CONFIG["active_model"])
 
             full_res = ""
@@ -92,17 +92,16 @@ def generate_ai_response(interaction_type):
         interaction_type,
         st.session_state["session_id"]
     )
-
-    # UI SYNC
-    # Final rerun to update the chat input 'disabled' state and show feedback buttons
     st.rerun()
-def trigger_load_chat(user_id, session_key):
-    if st.session_state.get("session_id") == session_key:
-        return  # Do nothing, it's already loaded
 
-    load_selected_chat(user_id, session_key)
-    st.session_state["session_id"] = session_key
-    st.session_state["feedback_pending"] = False  # Reset UI state
+
+# def trigger_load_chat(user_id, session_key):
+#     if st.session_state.get("session_id") == session_key:
+#         return  # Do nothing, it's already loaded
+#
+#     load_selected_chat(user_id, session_key)
+#     st.session_state["session_id"] = session_key
+#     st.session_state["feedback_pending"] = False  # Reset UI state
 
 
 # Handles the states when users click either the "I understand" or "I need more help"
@@ -141,7 +140,7 @@ with st.sidebar:
         u_pass = st.text_input("Enter Username",)
         u_id = st.text_input("Enter Password", type="password")
         if st.button("Login", use_container_width=True) and u_id in AUTHORIZED_IDS:
-            controller.set('student_auth_id', u_id)
+            #controller.set('student_auth_id', u_id)
             st.session_state.update({"authenticated": True, "current_user": u_id})
             st.rerun()
     else:
