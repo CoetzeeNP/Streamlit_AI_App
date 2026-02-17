@@ -202,10 +202,13 @@ with st.sidebar:
 ###        Main      ###
 ###########################
 st.image("combined_logo.jpg")
-st.title("Business Planning Assistant")
+st.title("AIfrikaans Assistant")
 
 if not st.session_state["authenticated"]:
     st.warning("Please login via the sidebar.")
+    st.info("Welcome to the AIfrikaans Assistant Streamlit App!\n You are welcome to ask all your afrikaans related questions here. \n"
+            "All your prompts and generated responses are recorded while using the app. You will be asked for feedback after each questions. If you answer using the \"I dont understand button\", the large language model will try nad be more detailed in its explanation to try assist you learn!"
+            "\n\nPlease remember that large language models are not perfect and are prone to hallucinations or representing false information as fact quite convincingly")
     st.stop()
 
 # 1. Display Chat History
