@@ -61,7 +61,6 @@ def generate_ai_response(interaction_type):
                 placeholder.markdown(full_res + "▌")
 
             placeholder.markdown(full_res)
-    st.rerun()
     st.session_state["messages"].append({"role": "assistant", "content": full_res})
     st.session_state["last_model_used"] = actual_model
     st.session_state["feedback_pending"] = True
