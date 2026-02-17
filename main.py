@@ -273,7 +273,7 @@ if (
         use_container_width=True,
         key=f"btn_no_{msg_count}"
     )
-    st.rerun()
+
 
 # Generate Standard Response
 # This only fires if the last message is from a user and it wasn't a clarification trigger
@@ -283,6 +283,7 @@ if (
     and not st.session_state["feedback_pending"]
     and not st.session_state.get("trigger_clarification") # Add this check
 ):
+    st.rerun()
     generate_ai_response("GENERATED_RESPONSE")
 ###########################
 ###        Main      ###
