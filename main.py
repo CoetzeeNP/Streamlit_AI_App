@@ -37,27 +37,9 @@ AUTHORIZED_IDS = st.secrets["AUTHORIZED_STUDENT_LIST"]
 #    if cached_uid in AUTHORIZED_IDS:
 #        st.session_state.update({"authenticated": True, "current_user": cached_uid})
 
-# # Helper Functions
-# @st.cache_data(ttl=1800)
-# def get_cached_history_keys(user_id):
-#     db_ref = get_firebase_connection()
-#     return db_ref.child("logs").child(str(user_id).replace(".", "_")).get(shallow=True)
-#
-# # Updated Helper for Previews
-# @st.cache_data(ttl=1800)
-# def get_cached_preview(user_id, session_key):
-#     try:
-#         db_ref = get_firebase_connection()
-#         clean_uid = str(user_id).replace(".", "_")
-#         # Fetches just the first message (index 0) to keep it lightweight
-#         return db_ref.child("logs").child(clean_uid).child(session_key).child("transcript").child("0").get()
-#     except Exception:
-#         return None
 
 # Unified function to get AI response, stream to UI, and log to DB.
-# Consolidated to prevent duplicate messages and redundant reruns.
 def generate_ai_response(interaction_type):
-    # --- NEW: Tell the app we are busy ---
     st.session_state["is_generating"] = True
 
     with st.chat_message("assistant"):
@@ -66,7 +48,7 @@ def generate_ai_response(interaction_type):
             ai_manager = AIManager(AI_CONFIG["active_model"])
 
             full_res = ""
-            actual_model = AI_CONFIG["active_model"]  # Restored your logic
+            actual_model = AI_CONFIG["active_model"]
             placeholder = st.empty()
 
             for chunk, model_label in ai_manager.get_response_stream(
@@ -74,7 +56,7 @@ def generate_ai_response(interaction_type):
                     AI_CONFIG["system_instruction"]
             ):
                 full_res += chunk
-                actual_model = model_label  # Updates if failover occurs
+                actual_model = model_label
                 placeholder.markdown(full_res + "▌")
 
             placeholder.markdown(full_res)
@@ -82,8 +64,6 @@ def generate_ai_response(interaction_type):
     st.session_state["messages"].append({"role": "assistant", "content": full_res})
     st.session_state["last_model_used"] = actual_model
     st.session_state["feedback_pending"] = True
-
-    # --- NEW: AI is done ---
     st.session_state["is_generating"] = False
 
     save_to_firebase(
@@ -96,45 +76,13 @@ def generate_ai_response(interaction_type):
     st.rerun()
 
 
-# def trigger_load_chat(user_id, session_key):
-#     if st.session_state.get("session_id") == session_key:
-#         return  # Do nothing, it's already loaded
-#
-#     load_selected_chat(user_id, session_key)
-#     st.session_state["session_id"] = session_key
-#     st.session_state["feedback_pending"] = False  # Reset UI state
-
-
-# Handles the states when users click either the "I understand" or "I need more help"
+# Callback: ONLY sets a flag — no heavy logic, no st.rerun().
+# Streamlit automatically reruns the full script after any on_click callback,
+# so the main body below will pick up "pending_feedback_value" and do the work.
 def handle_feedback(understood: bool):
-    # 1. Kill the visibility immediately
     st.session_state["feedback_pending"] = False
-    st.session_state["processing_feedback"] = True
+    st.session_state["pending_feedback_value"] = understood
 
-    with st.spinner("Besig om terugvoer te stoor... / Logging feedback..."):
-        user_id = st.session_state["current_user"]
-        session_id = st.session_state["session_id"]
-        model_to_log = st.session_state.get("last_model_used", AI_CONFIG["active_model"])
-
-        if understood:
-            save_to_firebase(user_id, model_to_log, st.session_state["messages"],
-                             "GENERATED_RESPONSE", session_id, feedback_value=True)
-        else:
-            # Add the clarification request to the message list
-            clarification_text = "I don't understand the previous explanation. Please break it down further."
-            st.session_state["messages"].append({"role": "user", "content": clarification_text})
-
-            # Update DB
-            update_previous_feedback(user_id, session_id, st.session_state["messages"], False)
-            save_to_firebase(user_id, model_to_log, st.session_state["messages"],
-                             "CLARIFICATION_REQUEST", session_id, feedback_value=None)
-
-            # This flag triggers the NEXT AI response in your main loop
-            st.session_state["trigger_clarification"] = True
-
-    # 2. Reset the lock and FORCE a rerun to clean the UI
-    st.session_state["processing_feedback"] = False
-    st.rerun()
 
 ###########################
 ###        Sidebar      ###
@@ -163,38 +111,6 @@ with st.sidebar:
                            use_container_width=True)
 
         st.divider()
-        # st.subheader("Chat History")
-        # all_logs = get_cached_history_keys(st.session_state['current_user'])
-        #
-        # if all_logs:
-        #     # Create a mapping of Pretty Date -> DB Key
-        #     display_options = {}
-        #     for k in sorted(all_logs.keys(), reverse=True):
-        #         try:
-        #             dt_obj = datetime.strptime(k, "%Y%m%d_%H%M%S")
-        #             clean_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
-        #         except:
-        #             clean_date = k
-        #         display_options[clean_date] = k
-        #
-        #     sel_display = st.selectbox("Select a previous session:", options=list(display_options.keys()))
-        #     sel_key = display_options[sel_display]
-        #
-        #     # Re-added Preview Logic
-        #     preview_msg = get_cached_preview(st.session_state['current_user'], sel_key)
-        #
-        #     with st.expander("🔍 Preview Session"):
-        #         if preview_msg:
-        #             role = "User" if preview_msg.get("role") == "user" else "Assistant"
-        #             content = preview_msg.get("content", "No content available")
-        #             st.markdown(f"**{role}:** {content[:100]}...")
-        #         else:
-        #             st.info("No preview available.")
-        #
-        #     if st.button("🔄 Load & Continue", type="primary", use_container_width=True,
-        #                  on_click=trigger_load_chat,
-        #                  args=(st.session_state['current_user'], sel_key)):
-        #         st.rerun()
 
         if st.button("New Chat", use_container_width=True):
             st.session_state.update(
@@ -206,7 +122,7 @@ with st.sidebar:
 
 
 ###########################
-###        Main      ###
+###        Main         ###
 ###########################
 st.image("combined_logo.jpg")
 st.title("AIfrikaans Assistant")
@@ -218,24 +134,51 @@ if not st.session_state["authenticated"]:
             "\n\nPlease remember that large language models are not perfect and are prone to hallucinations or representing false information as fact quite convincingly")
     st.stop()
 
-# 1. Display Chat History
+# 1. Process pending feedback FIRST (before rendering anything else).
+#    This block runs during the automatic rerun that follows the on_click callback.
+#    At this point feedback_pending is already False (set in handle_feedback),
+#    so the feedback buttons will not render this cycle — no duplicate UI.
+if "pending_feedback_value" in st.session_state:
+    understood = st.session_state.pop("pending_feedback_value")  # consume the flag
+
+    user_id = st.session_state["current_user"]
+    session_id = st.session_state["session_id"]
+    model_to_log = st.session_state.get("last_model_used", AI_CONFIG["active_model"])
+
+    if understood:
+        save_to_firebase(
+            user_id, model_to_log, st.session_state["messages"],
+            "GENERATED_RESPONSE", session_id, feedback_value=True
+        )
+    else:
+        clarification_text = "I don't understand the previous explanation. Please break it down further."
+        st.session_state["messages"].append({"role": "user", "content": clarification_text})
+
+        update_previous_feedback(user_id, session_id, st.session_state["messages"], False)
+        save_to_firebase(
+            user_id, model_to_log, st.session_state["messages"],
+            "CLARIFICATION_REQUEST", session_id, feedback_value=None
+        )
+
+        st.session_state["trigger_clarification"] = True
+
+# 2. Display Chat History
 for msg in st.session_state["messages"]:
     with st.chat_message(msg["role"]):
         with st.container(border=True):
             label = st.session_state["current_user"] if msg["role"] == "user" else "Assistant"
             st.markdown(f"**{label}:**\n\n{msg['content']}")
 
+# 3. Trigger clarification AI response if flagged
 if st.session_state.get("trigger_clarification"):
     st.session_state["trigger_clarification"] = False
-    # This explicitly logs the NEXT AI message as a CLARIFICATION_RESPONSE
     generate_ai_response("CLARIFICATION_RESPONSE")
 
-# 3. Chat Input
+# 4. Chat Input
 input_msg = "Please provide feedback..." if st.session_state["feedback_pending"] else "Ask about your business plan..."
 if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pending"]):
     st.session_state["messages"].append({"role": "user", "content": prompt})
 
-    # Immediately log the user's manual input
     save_to_firebase(
         st.session_state["current_user"],
         AI_CONFIG["active_model"],
@@ -245,14 +188,12 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
     )
     st.rerun()
 
-# Feedback UI
-# This check "not st.session_state.get('is_generating', False)" is the magic fix
+# 5. Feedback UI — only shown when a response is complete and not currently generating
 if (
         st.session_state["messages"]
         and st.session_state["messages"][-1]["role"] == "assistant"
         and st.session_state["feedback_pending"]
         and not st.session_state.get("is_generating", False)
-        and not st.session_state.get("processing_feedback", False)
 ):
     st.divider()
     st.info("Did you understand the explanation?")
@@ -275,15 +216,14 @@ if (
         key=f"btn_no_{msg_count}"
     )
 
-# Generate Standard Response
-# This only fires if the last message is from a user and it wasn't a clarification trigger
+# 6. Generate Standard Response
 if (
     st.session_state["messages"]
     and st.session_state["messages"][-1]["role"] == "user"
     and not st.session_state["feedback_pending"]
-    and not st.session_state.get("trigger_clarification") # Add this check
+    and not st.session_state.get("trigger_clarification")
 ):
     generate_ai_response("GENERATED_RESPONSE")
 ###########################
-###        Main      ###
+###        Main         ###
 ###########################
