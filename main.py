@@ -161,7 +161,7 @@ if "pending_feedback_value" in st.session_state:
         )
 
         st.session_state["trigger_clarification"] = True
-        st.rerun()
+    st.rerun()
 
 # 2. Display Chat History
 for msg in st.session_state["messages"]:
