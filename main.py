@@ -57,6 +57,8 @@ AUTHORIZED_IDS = st.secrets["AUTHORIZED_STUDENT_LIST"]
 # Unified function to get AI response, stream to UI, and log to DB.
 # Consolidated to prevent duplicate messages and redundant reruns.
 def generate_ai_response(interaction_type):
+    # --- NEW: Tell the app we are busy ---
+    st.session_state["is_generating"] = True
 
     with st.chat_message("assistant"):
         with st.container(border=True):
@@ -64,11 +66,9 @@ def generate_ai_response(interaction_type):
             ai_manager = AIManager(AI_CONFIG["active_model"])
 
             full_res = ""
-            actual_model = AI_CONFIG["active_model"]  # Default starting point
+            actual_model = AI_CONFIG["active_model"]  # Restored your logic
             placeholder = st.empty()
 
-            # The generator yields (token, model_label)
-            # This handles the failover internally
             for chunk, model_label in ai_manager.get_response_stream(
                     st.session_state["messages"],
                     AI_CONFIG["system_instruction"]
@@ -77,13 +77,14 @@ def generate_ai_response(interaction_type):
                 actual_model = model_label  # Updates if failover occurs
                 placeholder.markdown(full_res + "▌")
 
-            placeholder.markdown(full_res)  # Remove trailing cursor
+            placeholder.markdown(full_res)
 
     st.session_state["messages"].append({"role": "assistant", "content": full_res})
-
     st.session_state["last_model_used"] = actual_model
-
     st.session_state["feedback_pending"] = True
+
+    # --- NEW: AI is done ---
+    st.session_state["is_generating"] = False
 
     save_to_firebase(
         st.session_state["current_user"],
@@ -239,34 +240,34 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
     st.rerun()
 
 # Feedback UI
-# Only show if the last message was from the assistant and feedback is pending
+# This check "not st.session_state.get('is_generating', False)" is the magic fix
 if (
-        st.session_state.get("messages")
+        st.session_state["messages"]
         and st.session_state["messages"][-1]["role"] == "assistant"
         and st.session_state["feedback_pending"]
+        and not st.session_state.get("is_generating", False)
         and not st.session_state.get("processing_feedback", False)
 ):
     st.divider()
-    st.info("Het jy die verduideliking verstaan? / Did you understand the explanation?")
+    st.info("Did you understand the explanation?")
 
     msg_count = len(st.session_state["messages"])
     c1, c2 = st.columns(2)
 
     c1.button(
-        "I understand! / Ek verstaan!",
+        "I understand!",
         on_click=handle_feedback,
         args=(True,),
         use_container_width=True,
         key=f"btn_yes_{msg_count}"
     )
     c2.button(
-        "I need more help! / Ek het hulp nodig!",
+        "I need more help!",
         on_click=handle_feedback,
         args=(False,),
         use_container_width=True,
         key=f"btn_no_{msg_count}"
     )
-
 
 # Generate Standard Response
 # This only fires if the last message is from a user and it wasn't a clarification trigger
