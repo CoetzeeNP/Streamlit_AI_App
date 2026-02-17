@@ -74,15 +74,16 @@ def generate_ai_response(interaction_type):
         st.session_state["session_id"]
     )
     st.rerun()
-
-
+def rerun():
+    st.rerun()
 # Callback: ONLY sets a flag — no heavy logic, no st.rerun().
 # Streamlit automatically reruns the full script after any on_click callback,
 # so the main body below will pick up "pending_feedback_value" and do the work.
 def handle_feedback(understood: bool):
     st.session_state["feedback_pending"] = False
     st.session_state["pending_feedback_value"] = understood
-    st.rerun()
+    rerun()
+
 
 
 ###########################
