@@ -154,7 +154,7 @@ if "pending_feedback_value" in st.session_state:
     else:
         clarification_text = "I don't understand the previous explanation. Please break it down further."
         st.session_state["messages"].append({"role": "user", "content": clarification_text})
-
+        st.rerun()
         update_previous_feedback(user_id, session_id, st.session_state["messages"], False)
         save_to_firebase(
             user_id, model_to_log, st.session_state["messages"],
