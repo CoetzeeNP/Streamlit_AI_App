@@ -239,31 +239,31 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
     st.rerun()
 
 # Feedback UI
-if st.session_state["feedback_pending"]:
+# Added a check for 'processing_feedback' to the main condition
+if st.session_state["feedback_pending"] and not st.session_state.get("processing_feedback", False):
     st.divider()
     st.info("Did you understand the explanation?")
-
-    is_disabled = st.session_state.get("processing_feedback", False)
 
     # Use the length of messages to create a unique ID for this specific feedback instance
     msg_count = len(st.session_state["messages"])
 
     c1, c2 = st.columns(2)
+
+    # When clicked, handle_feedback sets "processing_feedback" to True,
+    # which will make this entire block disappear on the next pass.
     c1.button(
         "I understand!",
         on_click=handle_feedback,
         args=(True,),
         use_container_width=True,
-        disabled=is_disabled,
-        key=f"btn_yes_{msg_count}"  # Unique key prevents state carry-over
+        key=f"btn_yes_{msg_count}"
     )
     c2.button(
         "I need more help!",
         on_click=handle_feedback,
         args=(False,),
         use_container_width=True,
-        disabled=is_disabled,
-        key=f"btn_no_{msg_count}"  # Unique key prevents state carry-over
+        key=f"btn_no_{msg_count}"
     )
 
 
