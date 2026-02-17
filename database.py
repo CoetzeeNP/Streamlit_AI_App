@@ -44,19 +44,19 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
 # This list comprehension removes 'None' holes created by manual indexing.
 # Firebase sometimes returns JSON arrays as Python lists.
 # This list comprehension removes 'None' holes created by manual indexing.
-def load_selected_chat(user_id, session_key):
-    db_ref = get_firebase_connection()
-    clean_user_id = str(user_id).replace(".", "_")
-
-    transcript = db_ref.child("logs").child(clean_user_id).child(session_key).child("transcript").get()
-
-    if transcript:
-        if isinstance(transcript, list):
-            st.session_state["messages"] = [m for m in transcript if m is not None]
-        else:
-            st.session_state["messages"] = list(transcript.values())
-            
-        st.session_state["session_id"] = session_key
+# def load_selected_chat(user_id, session_key):
+#     db_ref = get_firebase_connection()
+#     clean_user_id = str(user_id).replace(".", "_")
+#
+#     transcript = db_ref.child("logs").child(clean_user_id).child(session_key).child("transcript").get()
+#
+#     if transcript:
+#         if isinstance(transcript, list):
+#             st.session_state["messages"] = [m for m in transcript if m is not None]
+#         else:
+#             st.session_state["messages"] = list(transcript.values())
+#
+#         st.session_state["session_id"] = session_key
 
 # Calculate the index of the AI message that just occurred
 # Update only the specific field 'user_understood' for that specific message

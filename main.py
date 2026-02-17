@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import datetime
 from ai_strategy import AIManager
-from database import save_to_firebase, load_selected_chat, update_previous_feedback
+from database import save_to_firebase, update_previous_feedback
 from streamlit_cookies_controller import CookieController
 
 # Setup & Configuration
