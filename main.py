@@ -239,27 +239,28 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
     st.rerun()
 
 # Feedback UI
-# Added a check for 'processing_feedback' to the main condition
-if st.session_state["feedback_pending"] and not st.session_state.get("processing_feedback", False):
+# Only show if the last message was from the assistant and feedback is pending
+if (
+        st.session_state.get("messages")
+        and st.session_state["messages"][-1]["role"] == "assistant"
+        and st.session_state["feedback_pending"]
+        and not st.session_state.get("processing_feedback", False)
+):
     st.divider()
-    st.info("Did you understand the explanation?")
+    st.info("Het jy die verduideliking verstaan? / Did you understand the explanation?")
 
-    # Use the length of messages to create a unique ID for this specific feedback instance
     msg_count = len(st.session_state["messages"])
-
     c1, c2 = st.columns(2)
 
-    # When clicked, handle_feedback sets "processing_feedback" to True,
-    # which will make this entire block disappear on the next pass.
     c1.button(
-        "I understand!",
+        "I understand! / Ek verstaan!",
         on_click=handle_feedback,
         args=(True,),
         use_container_width=True,
         key=f"btn_yes_{msg_count}"
     )
     c2.button(
-        "I need more help!",
+        "I need more help! / Ek het hulp nodig!",
         on_click=handle_feedback,
         args=(False,),
         use_container_width=True,
