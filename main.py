@@ -27,7 +27,7 @@ if "session_id" not in st.session_state:
 if "messages" not in st.session_state: st.session_state["messages"] = []
 if "feedback_pending" not in st.session_state: st.session_state["feedback_pending"] = False
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
-if "feedback_clicked" not in st.session_state: st.session_state["feedback_clicked"] = False
+if "current_user" not in st.session_state: st.session_state["current_user"] = None
 
 # Persistence & Auth
 AUTHORIZED_IDS = st.secrets["AUTHORIZED_STUDENT_LIST"]
@@ -42,7 +42,6 @@ AUTHORIZED_IDS = st.secrets["AUTHORIZED_STUDENT_LIST"]
 def generate_ai_response(interaction_type):
     st.session_state["is_generating"] = True
     st.session_state["feedback_pending"] = False
-    st.session_state["feedback_clicked"] = False
 
     with st.chat_message("assistant"):
         with st.container(border=True):
@@ -80,10 +79,6 @@ def generate_ai_response(interaction_type):
 # Streamlit automatically reruns the full script after any on_click callback,
 # so the main body below will pick up "pending_feedback_value" and do the work.
 def handle_feedback(understood: bool):
-    if st.session_state["feedback_clicked"]:
-        return  # HARD STOP
-
-    st.session_state["feedback_clicked"] = True
     st.session_state["feedback_pending"] = False
     st.session_state["pending_feedback_value"] = understood
 
@@ -193,34 +188,27 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
     st.rerun()
 
 # 5. Feedback UI — only shown when a response is complete and not currently generating
+# 5. Feedback UI — only shown when a response is complete and not currently generating
 if (
-        st.session_state["messages"]
-        and st.session_state["messages"][-1]["role"] == "assistant"
-        and st.session_state["feedback_pending"]
-        and not st.session_state.get("is_generating", False)
+    st.session_state["messages"]
+    and st.session_state["messages"][-1]["role"] == "assistant"
+    and st.session_state["feedback_pending"]
+    and not st.session_state.get("is_generating", False)
 ):
     st.divider()
     st.info("Did you understand the explanation?")
-    msg_count = len(st.session_state["messages"])
-    c1, c2 = st.columns(2)
 
-    c1.button(
-        "I understand!",
-        on_click=handle_feedback,
-        args=(True,),
-        use_container_width=True,
-        disabled=st.session_state["feedback_clicked"],
-        key="btn_yes"
-    )
+    with st.form("feedback_form", clear_on_submit=True):
+        c1, c2 = st.columns(2)
 
-    c2.button(
-        "I need more help!",
-        on_click=handle_feedback,
-        args=(False,),
-        use_container_width=True,
-        disabled=st.session_state["feedback_clicked"],
-        key="btn_no"
-    )
+        understood = c1.form_submit_button("I understand!")
+        not_understood = c2.form_submit_button("I need more help!")
+
+        if understood:
+            handle_feedback(True)
+
+        if not_understood:
+            handle_feedback(False)
 
 # 6. Generate Standard Response
 if (
