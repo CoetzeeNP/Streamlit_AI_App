@@ -187,11 +187,11 @@ if (
     and not st.session_state.get("is_generating", False)
 ):
     st.info("Please provide feedback on the generated response!")
-    with st.form("feedback_form", clear_on_submit=True):
+    with st.form("feedback_form", clear_on_submit=True, border=False):
         c1, c2 = st.columns(2)
 
-        understood = c1.form_submit_button("I understand!")
-        not_understood = c2.form_submit_button("I need more help!")
+        understood = c1.form_submit_button("I understand!", use_container_width=True)
+        not_understood = c2.form_submit_button("I need more help!", use_container_width=True)
 
         if understood:
             st.session_state["feedback_pending"] = False
