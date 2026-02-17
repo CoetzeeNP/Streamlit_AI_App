@@ -165,7 +165,7 @@ if st.session_state.get("trigger_clarification"):
     generate_ai_response("CLARIFICATION_RESPONSE")
 
 # 4. Chat Input
-input_msg = "Please provide feedback..." if st.session_state["feedback_pending"] else "Ask about your business plan..."
+input_msg = "Please provide feedback..." if st.session_state["feedback_pending"] else "Ask your afrikaans question here"
 if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pending"]):
     st.session_state["messages"].append({"role": "user", "content": prompt})
 
@@ -186,7 +186,6 @@ if (
     and st.session_state["feedback_pending"]
     and not st.session_state.get("is_generating", False)
 ):
-    st.divider()
     with st.form("feedback_form", clear_on_submit=True):
         c1, c2 = st.columns(2)
 
