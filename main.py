@@ -131,7 +131,7 @@ def handle_feedback(understood: bool):
 
             # This flag triggers the NEXT AI response in your main loop
             st.session_state["trigger_clarification"] = True
-
+    st.rerun()
     # 2. Reset the lock and FORCE a rerun to clean the UI
     st.session_state["processing_feedback"] = False
 
@@ -284,7 +284,7 @@ if (
     and not st.session_state.get("trigger_clarification") # Add this check
 ):
     generate_ai_response("GENERATED_RESPONSE")
-    st.rerun()
+
 ###########################
 ###        Main      ###
 ###########################
