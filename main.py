@@ -138,8 +138,8 @@ with st.sidebar:
     st.image("icdf.png")
     if not st.session_state["authenticated"]:
         st.info("Enter your username and password below!")
-        u_pass = st.text_input("Enter Student ID", label="Password")
-        u_id = st.text_input("Enter Student ID", type="password", label="Username")
+        u_pass = st.text_input("Enter Username",)
+        u_id = st.text_input("Enter Password", type="password")
         if st.button("Login", use_container_width=True) and u_id in AUTHORIZED_IDS:
             controller.set('student_auth_id', u_id)
             st.session_state.update({"authenticated": True, "current_user": u_id})
