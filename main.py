@@ -193,7 +193,7 @@ if (
         st.session_state["messages"]
         and st.session_state["messages"][-1]["role"] == "assistant"
         and st.session_state["feedback_pending"]
-        and st.session_state("is_generating", False)
+        and st.session_state("is_generating", True)
 ):
     st.divider()
     st.info("Did you understand the explanation?")
