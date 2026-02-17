@@ -27,7 +27,7 @@ if "session_id" not in st.session_state:
 if "messages" not in st.session_state: st.session_state["messages"] = []
 if "feedback_pending" not in st.session_state: st.session_state["feedback_pending"] = False
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
-if "current_user" not in st.session_state: st.session_state["current_user"] = None
+if "feedback_clicked" not in st.session_state: st.session_state["feedback_clicked"] = False
 
 # Persistence & Auth
 AUTHORIZED_IDS = st.secrets["AUTHORIZED_STUDENT_LIST"]
@@ -80,9 +80,8 @@ def generate_ai_response(interaction_type):
 # Streamlit automatically reruns the full script after any on_click callback,
 # so the main body below will pick up "pending_feedback_value" and do the work.
 def handle_feedback(understood: bool):
-    # Prevent double execution
-    if st.session_state.get("feedback_clicked", False):
-        return
+    if st.session_state["feedback_clicked"]:
+        return  # HARD STOP
 
     st.session_state["feedback_clicked"] = True
     st.session_state["feedback_pending"] = False
@@ -210,8 +209,8 @@ if (
         on_click=handle_feedback,
         args=(True,),
         use_container_width=True,
-        key=f"btn_yes_{msg_count}",
-        disabled=st.session_state.get("feedback_clicked", False)
+        disabled=st.session_state["feedback_clicked"],
+        key="btn_yes"
     )
 
     c2.button(
@@ -219,10 +218,9 @@ if (
         on_click=handle_feedback,
         args=(False,),
         use_container_width=True,
-        key=f"btn_no_{msg_count}",
-        disabled=st.session_state.get("feedback_clicked", False)
+        disabled=st.session_state["feedback_clicked"],
+        key="btn_no"
     )
-
 
 # 6. Generate Standard Response
 if (
