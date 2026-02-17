@@ -134,7 +134,6 @@ def handle_feedback(understood: bool):
 
     # 2. Reset the lock and FORCE a rerun to clean the UI
     st.session_state["processing_feedback"] = False
-    st.rerun()
 
 ###########################
 ###        Sidebar      ###
@@ -274,6 +273,7 @@ if (
         use_container_width=True,
         key=f"btn_no_{msg_count}"
     )
+    st.rerun()
 
 # Generate Standard Response
 # This only fires if the last message is from a user and it wasn't a clarification trigger
