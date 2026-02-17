@@ -42,6 +42,7 @@ AUTHORIZED_IDS = st.secrets["AUTHORIZED_STUDENT_LIST"]
 def generate_ai_response(interaction_type):
     st.session_state["is_generating"] = True
     st.session_state["feedback_pending"] = False
+    st.session_state["feedback_clicked"] = False
 
     with st.chat_message("assistant"):
         with st.container(border=True):
@@ -74,15 +75,18 @@ def generate_ai_response(interaction_type):
         st.session_state["session_id"]
     )
     st.rerun()
-def rerun():
-    st.rerun()
+
 # Callback: ONLY sets a flag — no heavy logic, no st.rerun().
 # Streamlit automatically reruns the full script after any on_click callback,
 # so the main body below will pick up "pending_feedback_value" and do the work.
 def handle_feedback(understood: bool):
+    # Prevent double execution
+    if st.session_state.get("feedback_clicked", False):
+        return
+
+    st.session_state["feedback_clicked"] = True
     st.session_state["feedback_pending"] = False
     st.session_state["pending_feedback_value"] = understood
-    rerun()
 
 
 
@@ -206,14 +210,17 @@ if (
         on_click=handle_feedback,
         args=(True,),
         use_container_width=True,
-        key=f"btn_yes_{msg_count}"
+        key=f"btn_yes_{msg_count}",
+        disabled=st.session_state.get("feedback_clicked", False)
     )
+
     c2.button(
         "I need more help!",
         on_click=handle_feedback,
         args=(False,),
         use_container_width=True,
-        key=f"btn_no_{msg_count}"
+        key=f"btn_no_{msg_count}",
+        disabled=st.session_state.get("feedback_clicked", False)
     )
 
 
