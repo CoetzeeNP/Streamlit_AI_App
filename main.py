@@ -107,11 +107,11 @@ def generate_ai_response(interaction_type):
 
 # Handles the states when users click either the "I understand" or "I need more help"
 def handle_feedback(understood: bool):
-    # Set this immediately to block concurrent clicks
-    st.session_state["processing_feedback"] = True
+    # 1. Kill the visibility immediately
     st.session_state["feedback_pending"] = False
+    st.session_state["processing_feedback"] = True
 
-    with st.spinner("Logging feedback..."):
+    with st.spinner("Besig om terugvoer te stoor... / Logging feedback..."):
         user_id = st.session_state["current_user"]
         session_id = st.session_state["session_id"]
         model_to_log = st.session_state.get("last_model_used", AI_CONFIG["active_model"])
@@ -120,15 +120,21 @@ def handle_feedback(understood: bool):
             save_to_firebase(user_id, model_to_log, st.session_state["messages"],
                              "GENERATED_RESPONSE", session_id, feedback_value=True)
         else:
+            # Add the clarification request to the message list
             clarification_text = "I don't understand the previous explanation. Please break it down further."
             st.session_state["messages"].append({"role": "user", "content": clarification_text})
+
+            # Update DB
             update_previous_feedback(user_id, session_id, st.session_state["messages"], False)
             save_to_firebase(user_id, model_to_log, st.session_state["messages"],
                              "CLARIFICATION_REQUEST", session_id, feedback_value=None)
+
+            # This flag triggers the NEXT AI response in your main loop
             st.session_state["trigger_clarification"] = True
 
-    # Reset lock and force UI refresh
+    # 2. Reset the lock and FORCE a rerun to clean the UI
     st.session_state["processing_feedback"] = False
+    st.rerun()
 
 ###########################
 ###        Sidebar      ###
