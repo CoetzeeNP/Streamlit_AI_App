@@ -193,15 +193,10 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
     )
     st.rerun()
 
-# 5. Feedback UI — only shown when a response is complete, not generating, and not mid-processing.
-#    The processing_feedback flag ensures buttons vanish immediately on click rather than
-#    appearing greyed out during the rerun cycle.
 if (
         st.session_state["messages"]
         and st.session_state["messages"][-1]["role"] == "assistant"
         and st.session_state["feedback_pending"]
-        and not st.session_state.get("is_generating", False)
-        and not st.session_state.get("processing_feedback", False)  # NEW
 ):
     st.divider()
     st.info("Did you understand the explanation?")
