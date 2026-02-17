@@ -128,7 +128,6 @@ def handle_feedback(understood: bool):
 
     # Reset lock and force UI refresh
     st.session_state["processing_feedback"] = False
-    st.rerun()
 
 ###########################
 ###        Sidebar      ###
@@ -237,6 +236,7 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
         "USER_PROMPT",
         st.session_state["session_id"]
     )
+    st.rerun()
 
 # Feedback UI
 if st.session_state["feedback_pending"]:
