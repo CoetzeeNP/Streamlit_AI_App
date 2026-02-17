@@ -40,6 +40,7 @@ AUTHORIZED_IDS = st.secrets["AUTHORIZED_STUDENT_LIST"]
 
 # Unified function to get AI response, stream to UI, and log to DB.
 def generate_ai_response(interaction_type):
+    st.rerun()
     st.session_state["is_generating"] = True
     st.session_state["feedback_pending"] = False
 
