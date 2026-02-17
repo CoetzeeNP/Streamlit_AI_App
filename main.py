@@ -186,6 +186,7 @@ if (
     and st.session_state["feedback_pending"]
     and not st.session_state.get("is_generating", False)
 ):
+    st.info("Please provide feedback on the generated response!")
     with st.form("feedback_form", clear_on_submit=True):
         c1, c2 = st.columns(2)
 
