@@ -1,46 +1,30 @@
-import threading
-import firebase_admin
-from firebase_admin import credentials, db
-import datetime
+import requests
+import json
 import streamlit as st
+from datetime import datetime
 
 
+# We use cache_resource to keep the session alive across reruns
 @st.cache_resource
-def get_firebase_app():
-    """Initializes the Firebase App once and caches it."""
-    if not firebase_admin._apps:
-        cred_info = dict(st.secrets["firebase_service_account"])
-        # Efficiently handle the newline issue
-        cred_info["private_key"] = cred_info["private_key"].replace("\\n", "\n")
-        db_url = st.secrets["firebase_db_url"].strip()
-        cred = credentials.Certificate(cred_info)
-        return firebase_admin.initialize_app(cred, {'databaseURL': db_url})
-    return firebase_admin.get_app()
-
-
-# Inside database.py, change your update helper to this:
-def _async_update(path, data):
-    try:
-        # Pass the app explicitly to ensure we aren't using a global default
-        # that might be compromised by a root reference.
-        app = get_firebase_app()
-        ref = db.reference(path, app=app)
-        ref.update(data)
-    except Exception as e:
-        print(f"Firebase Async Error: {e}")
+def get_db_session():
+    session = requests.Session()
+    # Add a prefix to the URL for convenience
+    base_url = st.secrets["firebase_db_url"].rstrip('/')
+    return session, base_url
 
 
 def save_to_firebase(user_id, model_name, messages, interaction_type, session_id, feedback_value=None):
-    # Ensure app is ready
-    get_firebase_app()
+    session, base_url = get_db_session()
 
     clean_uid = str(user_id).replace(".", "_")
-    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     last_index = len(messages) - 1
 
-    # Target path for the specific session
-    base_path = f"logs/{clean_uid}/{session_id}"
+    # Path for the specific log entry
+    path = f"logs/{clean_uid}/{session_id}"
 
+    # Construct the payload
+    # Note: We only send the specific NEW data to save bandwidth
     update_data = {
         "last_interaction": interaction_type,
         "last_updated": current_time,
@@ -54,18 +38,24 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
         }
     }
 
-    # Offload the network I/O to a background thread
-    threading.Thread(target=_async_update, args=(base_path, update_data)).start()
+    # PATCH performs an incremental update (merges keys)
+    # Adding .json to the URL is required by Firebase REST API
+    try:
+        url = f"{base_url}/{path}.json"
+        session.patch(url, data=json.dumps(update_data))
+    except Exception as e:
+        print(f"Firebase REST Error: {e}")
 
 
 def update_previous_feedback(user_id, session_id, messages, understood_value):
-    get_firebase_app()
+    session, base_url = get_db_session()
     clean_uid = str(user_id).replace(".", "_")
     target_index = len(messages) - 2
 
     if target_index >= 0:
-        path = f"logs/{clean_uid}/{session_id}/transcript/{target_index}"
+        path = f"logs/{clean_uid}/{session_id}/transcript/{target_index}.json"
         data = {"user_understood": understood_value}
-
-        # Async call to prevent UI lag on feedback click
-        threading.Thread(target=_async_update, args=(path, data)).start()
+        try:
+            session.patch(f"{base_url}/{path}", data=json.dumps(data))
+        except Exception as e:
+            print(f"Firebase Feedback Error: {e}")
