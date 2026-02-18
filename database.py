@@ -18,18 +18,16 @@ def get_firebase_app():
     return firebase_admin.get_app()
 
 
+# Inside database.py, change your update helper to this:
 def _async_update(path, data):
     try:
-        # Use the specific app instance to prevent default-app overhead
-        app = firebase_admin.get_app()
-        # Explicitly scope the reference to the path before doing anything
+        # Pass the app explicitly to ensure we aren't using a global default
+        # that might be compromised by a root reference.
+        app = get_firebase_app()
         ref = db.reference(path, app=app)
-
-        # update() is a 'set' operation on specific keys;
-        # it shouldn't trigger a download UNLESS there is a listener active.
         ref.update(data)
     except Exception as e:
-        st.error(f"Logging failed: {e}")
+        print(f"Firebase Async Error: {e}")
 
 
 def save_to_firebase(user_id, model_name, messages, interaction_type, session_id, feedback_value=None):
