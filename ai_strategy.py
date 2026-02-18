@@ -6,7 +6,7 @@ from openai import OpenAI as OpenAIClient
 
 
 # ==========================================
-# 1. ABSTRACT INTERFACE
+# ABSTRACT INTERFACE
 # ==========================================
 class AIStrategy(ABC):
     @abstractmethod
@@ -16,7 +16,7 @@ class AIStrategy(ABC):
 
 
 # ==========================================
-# 2. GOOGLE GEMINI IMPLEMENTATION
+# GOOGLE GEMINI IMPLEMENTATION
 # ==========================================
 class GeminiStrategy(AIStrategy):
     def generate_stream(self, model_id, chat_history, system_instruction):
@@ -42,7 +42,7 @@ class GeminiStrategy(AIStrategy):
 
 
 # ==========================================
-# 3. OPENAI IMPLEMENTATION
+# OPENAI IMPLEMENTATION
 # ==========================================
 class OpenAIStrategy(AIStrategy):
     def generate_stream(self, model_id, chat_history, system_instruction):
@@ -64,7 +64,7 @@ class OpenAIStrategy(AIStrategy):
                 yield chunk.choices[0].delta.content
 
 # ==========================================
-# 4. ORCHESTRATION & FAILOVER MANAGER
+# ORCHESTRATION & FAILOVER MANAGER
 # ==========================================
 class AIManager:
     def __init__(self, model_label):
