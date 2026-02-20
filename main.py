@@ -126,7 +126,7 @@ with st.sidebar:
 ###        Main         ###
 ###########################
 st.image("combined_logo.jpg")
-st.title("AIfrikaans Assistant")
+st.title("AI-frikaans Assistant")
 
 if not st.session_state["authenticated"]:
     st.warning("Please login via the sidebar.")
