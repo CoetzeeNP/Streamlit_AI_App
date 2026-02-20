@@ -1,6 +1,5 @@
 streamlit
 firebase-admin
 google-genai
+google-auth
 openai
-streamlit-cookies-controller
-streamlit-autorefresh
