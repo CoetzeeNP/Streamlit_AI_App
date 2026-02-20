@@ -92,7 +92,6 @@ with st.sidebar:
         with st.expander("Debug Secrets"):
             if "credentials" in st.secrets:
                 st.success("Credentials section found!")
-                st.write("Recognized usernames:", list(st.secrets["credentials"].keys()))
             else:
                 st.error("The [credentials] block is missing from your Streamlit secrets!")
         # ---------------------------------
