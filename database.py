@@ -19,7 +19,7 @@ def _firebase_patch(session, url, data: dict):
         with session.patch(url, data=json.dumps(data), stream=True) as response:
             response.close()  # Discard body — we don't need Firebase's echo
     except Exception as e:
-        print(f"Firebase REST Error: {e}")
+        logger.error(f"Firebase REST Error: {e}")
 
 def save_to_firebase(user_id, model_name, messages, interaction_type, session_id, feedback_value=None):
     session, base_url = get_db_session()
