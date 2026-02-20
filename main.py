@@ -87,15 +87,6 @@ with st.sidebar:
         username = st.text_input("Enter Username").strip()
         password = st.text_input("Enter Password", type="password").strip()
 
-        # --- TEMPORARY DEBUGGING BLOCK ---
-        # Expand this in your sidebar to see what Streamlit is actually reading
-        with st.expander("Debug Secrets"):
-            if "credentials" in st.secrets:
-                st.success("Credentials section found!")
-            else:
-                st.error("The [credentials] block is missing from your Streamlit secrets!")
-        # ---------------------------------
-
         if st.button("Login", use_container_width=True):
             # Using .get() prevents a crash if the credentials block isn't found
             if username in st.secrets.get("credentials", {}) and st.secrets["credentials"][username] == password:
