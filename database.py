@@ -1,4 +1,4 @@
-import pyrebase
+import pyrebase4 as pyrebase
 import streamlit as st
 from datetime import datetime
 
