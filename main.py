@@ -48,15 +48,18 @@ def generate_ai_response(interaction_type):
             actual_model = AI_CONFIG["active_model"]
             placeholder = st.empty()
 
-            for chunk, model_label in ai_manager.get_response_stream(
-                    st.session_state["messages"],
-                    AI_CONFIG["system_instruction"]
-            ):
-                full_res += chunk
-                actual_model = model_label
-                placeholder.markdown(full_res + "▌")
+            # Add the Streamlit spinner right here
+            with st.spinner("Dink..."):  # "Thinking..." in Afrikaans
+                for chunk, model_label in ai_manager.get_response_stream(
+                        st.session_state["messages"],
+                        AI_CONFIG["system_instruction"]
+                ):
+                    full_res += chunk
+                    actual_model = model_label
+                    placeholder.markdown(full_res + "▌")
 
             placeholder.markdown(full_res)
+
     st.session_state["messages"].append({"role": "assistant", "content": full_res})
     st.session_state["last_model_used"] = actual_model
     st.session_state["feedback_pending"] = True
