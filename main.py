@@ -77,18 +77,31 @@ def generate_ai_response(interaction_type):
 ###########################
 ###        Sidebar      ###
 ###########################
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+
 with st.sidebar:
     st.image("icdf.png")
+
     if not st.session_state["authenticated"]:
         st.info("Enter your username and password below!")
-        u_pass = st.text_input("Enter Username",)
-        u_id = st.text_input("Enter Password", type="password")
-        if st.button("Login", use_container_width=True) and u_id in AUTHORIZED_IDS:
-            #controller.set('student_auth_id', u_id)
-            st.session_state.update({"authenticated": True, "current_user": u_id})
-            st.rerun()
+
+        # Cleaned up variable names to match the inputs
+        username = st.text_input("Enter Username")
+        password = st.text_input("Enter Password", type="password")
+
+        if st.button("Login", use_container_width=True):
+            # 1. Check if the username exists in the secrets.toml [credentials] section
+            # 2. Check if the entered password matches the stored password
+            if username in st.secrets["credentials"] and st.secrets["credentials"][username] == password:
+                st.session_state.update({"authenticated": True, "current_user": username})
+                st.rerun()
+            else:
+                st.error("Incorrect username or password.")
+
     else:
-        st.write(f"**Logged in as:** {st.session_state['current_user']}")
+        st.write(f"Logged in as: {st.session_state['current_user']}")
+
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Logout", use_container_width=True):
@@ -96,15 +109,17 @@ with st.sidebar:
                 st.session_state.clear()
                 st.rerun()
         with col2:
-            st.link_button("Feedback",
-                           "https://forms.office.com/Pages/ResponsePage.aspx?id=...",
+            st.link_button("Feedback", "https://forms.office.com/Pages/ResponsePage.aspx?id=...",
                            use_container_width=True)
 
         st.divider()
 
         if st.button("New Chat", use_container_width=True):
-            st.session_state.update(
-                {"messages": [], "session_id": datetime.now().strftime("%Y%m%d_%H%M%S"), "feedback_pending": False})
+            st.session_state.update({
+                "messages": [],
+                "session_id": datetime.now().strftime("%Y%m%d_%H%M%S"),
+                "feedback_pending": False
+            })
             st.rerun()
 ###########################
 ###        Sidebar      ###
