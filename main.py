@@ -49,7 +49,7 @@ def generate_ai_response(interaction_type):
             placeholder = st.empty()
 
             # Add the Streamlit spinner right here
-            with st.spinner("Dink..."):  # "Thinking..." in Afrikaans
+            with st.spinner("Dink aan jou vraag..."):  # "Thinking..." in Afrikaans
                 for chunk, model_label in ai_manager.get_response_stream(
                         st.session_state["messages"],
                         AI_CONFIG["system_instruction"]
