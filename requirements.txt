@@ -4,3 +4,4 @@ google-genai
 openai
 streamlit-cookies-controller
 streamlit-autorefresh
+pyrebase
