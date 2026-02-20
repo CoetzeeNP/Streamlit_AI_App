@@ -28,9 +28,6 @@ if "feedback_pending" not in st.session_state: st.session_state["feedback_pendin
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
 if "current_user" not in st.session_state: st.session_state["current_user"] = None
 
-# Persistence & Auth
-AUTHORIZED_IDS = st.secrets["AUTHORIZED_STUDENT_LIST"]
-#cached_uid = controller.get('student_auth_id')
 
 #if cached_uid and not st.session_state["authenticated"]:
 #    if cached_uid in AUTHORIZED_IDS:
