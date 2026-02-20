@@ -83,14 +83,23 @@ with st.sidebar:
     if not st.session_state["authenticated"]:
         st.info("Enter your username and password below!")
 
-        # Cleaned up variable names to match the inputs
-        username = st.text_input("Enter Username")
-        password = st.text_input("Enter Password", type="password")
+        # Added .strip() to prevent invisible spaces from breaking the login
+        username = st.text_input("Enter Username").strip()
+        password = st.text_input("Enter Password", type="password").strip()
+
+        # --- TEMPORARY DEBUGGING BLOCK ---
+        # Expand this in your sidebar to see what Streamlit is actually reading
+        with st.expander("Debug Secrets"):
+            if "credentials" in st.secrets:
+                st.success("Credentials section found!")
+                st.write("Recognized usernames:", list(st.secrets["credentials"].keys()))
+            else:
+                st.error("The [credentials] block is missing from your Streamlit secrets!")
+        # ---------------------------------
 
         if st.button("Login", use_container_width=True):
-            # 1. Check if the username exists in the secrets.toml [credentials] section
-            # 2. Check if the entered password matches the stored password
-            if username in st.secrets["credentials"] and st.secrets["credentials"][username] == password:
+            # Using .get() prevents a crash if the credentials block isn't found
+            if username in st.secrets.get("credentials", {}) and st.secrets["credentials"][username] == password:
                 st.session_state.update({"authenticated": True, "current_user": username})
                 st.rerun()
             else:
