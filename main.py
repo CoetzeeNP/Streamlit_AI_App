@@ -196,12 +196,10 @@ if (
         if understood:
             st.session_state["feedback_pending"] = False
             st.session_state["pending_feedback_value"] = True
-            st.rerun()
 
         if not_understood:
             st.session_state["feedback_pending"] = False
             st.session_state["pending_feedback_value"] = False
-            st.rerun()
 
 # 6. Generate Standard Response
 if (
