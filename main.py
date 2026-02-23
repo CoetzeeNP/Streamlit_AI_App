@@ -108,7 +108,7 @@ with st.sidebar:
                 st.session_state.clear()
                 st.rerun()
         with col2:
-            st.link_button("Feedback", "https://forms.office.com/Pages/ResponsePage.aspx?id=...",
+            st.link_button("Feedback", "https://forms.office.com/Pages/DesignPageV2.aspx?origin=NeoPortalPage&subpage=design&id=uRv8jg-5SEq_bLoGhhk7gBvkZQsfRhhErcivaQmEhItUNENSMEJNQTM3UzQ1RlBMSFBUVTFKTFg2VS4u&topview=Prefill",
                            use_container_width=True)
 
         st.divider()
