@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import datetime
 from ai_strategy import AIManager
-from database import save_to_firebase, update_previous_feedback
+from database import save_to_firebase, get_supabase_client
 
 # Setup & Configuration
 st.set_page_config(layout="wide", page_title="AI-frikaans Assistant")
@@ -65,13 +65,16 @@ def generate_ai_response(interaction_type):
     st.session_state["feedback_pending"] = True
     st.session_state["is_generating"] = False
 
-    save_to_firebase(
+    # Capture the ID of the inserted row
+    last_row_id = save_to_firebase(
         st.session_state["current_user"],
         actual_model,
         st.session_state["messages"],
         interaction_type,
         st.session_state["session_id"]
     )
+    st.session_state["last_log_id"] = last_row_id  # Store it!
+    st.rerun()
     st.rerun()
 
 ###########################
@@ -143,27 +146,30 @@ if not st.session_state["authenticated"]:
 #    At this point feedback_pending is already False (set in handle_feedback),
 #    so the feedback buttons will not render this cycle — no duplicate UI.
 if "pending_feedback_value" in st.session_state:
-    understood = st.session_state.pop("pending_feedback_value")  # consume the flag
+    understood = st.session_state.pop("pending_feedback_value")
+    log_id = st.session_state.get("last_log_id")
 
-    user_id = st.session_state["current_user"]
-    session_id = st.session_state["session_id"]
-    model_to_log = st.session_state.get("last_model_used", AI_CONFIG["active_model"])
+    if log_id:
+        supabase = get_supabase_client()
+        if understood:
+            # UPDATE existing row instead of inserting new one
+            supabase.table("chat_logs").update({"user_understood": True}).eq("id", log_id).execute()
+        else:
+            # Update the existing row to False
+            supabase.table("chat_logs").update({"user_understood": False}).eq("id", log_id).execute()
 
-    if understood:
-        save_to_firebase(
-            user_id, model_to_log, st.session_state["messages"],
-            "GENERATED_RESPONSE", session_id, feedback_value=True
-        )
-    else:
-        clarification_text = "I don't understand the previous explanation. Please break it down further."
-        st.session_state["messages"].append({"role": "user", "content": clarification_text})
-        update_previous_feedback(user_id, session_id, st.session_state["messages"], False)
-        save_to_firebase(
-            user_id, model_to_log, st.session_state["messages"],
-            "CLARIFICATION_REQUEST", session_id, feedback_value=None
-        )
+            # NOW add the clarification request as a NEW user message row
+            clarification_text = "I don't understand the previous explanation. Please break it down further."
+            st.session_state["messages"].append({"role": "user", "content": clarification_text})
 
-        st.session_state["trigger_clarification"] = True
+            save_to_firebase(
+                st.session_state["current_user"],
+                st.session_state.get("last_model_used"),
+                st.session_state["messages"],
+                "CLARIFICATION_REQUEST",
+                st.session_state["session_id"]
+            )
+            st.session_state["trigger_clarification"] = True
 
 # 2. Display Chat History
 for msg in st.session_state["messages"]:

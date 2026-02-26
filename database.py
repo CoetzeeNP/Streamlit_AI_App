@@ -10,9 +10,7 @@ def get_supabase_client() -> Client:
 
 
 def save_to_firebase(user_id, model_name, messages, interaction_type, session_id, feedback_value=None):
-    """Renamed to match your main script, but now saves to Supabase"""
     supabase = get_supabase_client()
-
     last_msg = messages[-1]
 
     data = {
@@ -25,10 +23,11 @@ def save_to_firebase(user_id, model_name, messages, interaction_type, session_id
         "user_understood": feedback_value
     }
 
-    try:
-        supabase.table("chat_logs").insert(data).execute()
-    except Exception as e:
-        st.error(f"Error saving to Supabase: {e}")
+    # .execute() returns the inserted row. We catch the ID.
+    response = supabase.table("chat_logs").insert(data).execute()
+    if response.data:
+        return response.data[0]["id"]
+    return None
 
 
 def update_previous_feedback(user_id, session_id, messages, understood_value):
