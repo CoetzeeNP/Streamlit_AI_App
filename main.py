@@ -1,11 +1,9 @@
 import streamlit as st
 from datetime import datetime
 from ai_strategy import AIManager
-from database import save_to_firebase, get_supabase_client
+from database import save_to_supabase, get_supabase_client
 
-# Setup & Configuration
 st.set_page_config(layout="wide", page_title="AI-frikaans Assistant")
-#controller = CookieController()
 
 # Custom CSS
 st.markdown("""
@@ -27,12 +25,6 @@ if "messages" not in st.session_state: st.session_state["messages"] = []
 if "feedback_pending" not in st.session_state: st.session_state["feedback_pending"] = False
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
 if "current_user" not in st.session_state: st.session_state["current_user"] = None
-
-
-#if cached_uid and not st.session_state["authenticated"]:
-#    if cached_uid in AUTHORIZED_IDS:
-#        st.session_state.update({"authenticated": True, "current_user": cached_uid})
-
 
 # Unified function to get AI response, stream to UI, and log to DB.
 def generate_ai_response(interaction_type):
@@ -66,7 +58,7 @@ def generate_ai_response(interaction_type):
     st.session_state["is_generating"] = False
 
     # Capture the ID of the inserted row
-    last_row_id = save_to_firebase(
+    last_row_id = save_to_supabase(
         st.session_state["current_user"],
         actual_model,
         st.session_state["messages"],
@@ -80,6 +72,7 @@ def generate_ai_response(interaction_type):
 ###########################
 ###        Sidebar      ###
 ###########################
+
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
@@ -162,7 +155,7 @@ if "pending_feedback_value" in st.session_state:
             clarification_text = "I don't understand the previous explanation. Please break it down further."
             st.session_state["messages"].append({"role": "user", "content": clarification_text})
 
-            save_to_firebase(
+            save_to_supabase(
                 st.session_state["current_user"],
                 st.session_state.get("last_model_used"),
                 st.session_state["messages"],
@@ -188,7 +181,7 @@ input_msg = "Please provide feedback..." if st.session_state["feedback_pending"]
 if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pending"]):
     st.session_state["messages"].append({"role": "user", "content": prompt})
 
-    save_to_firebase(
+    save_to_supabase(
         st.session_state["current_user"],
         AI_CONFIG["active_model"],
         st.session_state["messages"],
@@ -197,7 +190,6 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
     )
     st.rerun()
 
-# 5. Feedback UI — only shown when a response is complete and not currently generating
 # 5. Feedback UI — only shown when a response is complete and not currently generating
 if (
     st.session_state["messages"]

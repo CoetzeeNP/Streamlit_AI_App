@@ -9,7 +9,7 @@ def get_supabase_client() -> Client:
     return create_client(url, key)
 
 
-def save_to_firebase(user_id, model_name, messages, interaction_type, session_id, feedback_value=None):
+def save_to_supabase(user_id, model_name, messages, interaction_type, session_id, feedback_value=None):
     supabase = get_supabase_client()
     last_msg = messages[-1]
 
