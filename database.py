@@ -1,76 +1,55 @@
-import requests
-import json
-import logging
 import streamlit as st
-from datetime import datetime
-import google.auth.transport.requests
-from google.oauth2 import service_account
+from supabase import create_client, Client
 
-logger = logging.getLogger("firebase")
-
-SCOPES = [
-    "https://www.googleapis.com/auth/firebase.database",
-    "https://www.googleapis.com/auth/userinfo.email"
-]
 
 @st.cache_resource
-def get_db_session():
-    session = requests.Session()
-    session.headers.update({"Content-Type": "application/json"})
-    base_url = st.secrets["firebase_db_url"].rstrip('/')
-    service_account_info = dict(st.secrets["firebase_service_account"])
-    credentials = service_account.Credentials.from_service_account_info(
-        service_account_info, scopes=SCOPES
-    )
-    return session, base_url, credentials
+def get_supabase_client() -> Client:
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
 
-def _get_token(credentials):
-    if not credentials.valid:
-        credentials.refresh(google.auth.transport.requests.Request())
-    return credentials.token
-
-def _firebase_patch(session, url, credentials, data: dict):
-    try:
-        token = _get_token(credentials)
-        with session.patch(
-            url,
-            data=json.dumps(data),
-            headers={"Authorization": f"Bearer {token}"},
-            stream=True
-        ) as response:
-            logger.info(f"Firebase PATCH {response.status_code} → {url}")
-            response.close()
-    except Exception as e:
-        logger.error(f"Firebase REST Error: {e}")
 
 def save_to_firebase(user_id, model_name, messages, interaction_type, session_id, feedback_value=None):
-    session, base_url, credentials = get_db_session()
-    clean_uid = str(user_id).replace(".", "_")
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    last_index = len(messages) - 1
+    """Renamed to match your main script, but now saves to Supabase"""
+    supabase = get_supabase_client()
 
-    url = f"{base_url}/logs/{clean_uid}/{session_id}.json"
+    last_msg = messages[-1]
 
-    update_data = {
-        "last_interaction": interaction_type,
-        "last_updated": current_time,
-        f"transcript/{last_index}": {
-            "model_name": model_name,
-            "content": messages[-1]["content"],
-            "role": messages[-1]["role"],
-            "timestamp": current_time,
-            "interaction": interaction_type,
-            "user_understood": feedback_value
-        }
+    data = {
+        "user_id": str(user_id),
+        "session_id": session_id,
+        "interaction_type": interaction_type,
+        "model_name": model_name,
+        "role": last_msg["role"],
+        "content": last_msg["content"],
+        "user_understood": feedback_value
     }
 
-    _firebase_patch(session, url, credentials, update_data)
+    try:
+        supabase.table("chat_logs").insert(data).execute()
+    except Exception as e:
+        st.error(f"Error saving to Supabase: {e}")
+
 
 def update_previous_feedback(user_id, session_id, messages, understood_value):
-    session, base_url, credentials = get_db_session()
-    clean_uid = str(user_id).replace(".", "_")
-    target_index = len(messages) - 2
+    """Updates the 'user_understood' flag for the last assistant response"""
+    supabase = get_supabase_client()
 
-    if target_index >= 0:
-        url = f"{base_url}/logs/{clean_uid}/{session_id}/transcript/{target_index}.json"
-        _firebase_patch(session, url, credentials, {"user_understood": understood_value})
+    # Find the last record for this user/session that was an assistant response
+    try:
+        response = (
+            supabase.table("chat_logs")
+            .select("id")
+            .eq("user_id", str(user_id))
+            .eq("session_id", session_id)
+            .eq("role", "assistant")
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+
+        if response.data:
+            record_id = response.data[0]["id"]
+            supabase.table("chat_logs").update({"user_understood": understood_value}).eq("id", record_id).execute()
+    except Exception as e:
+        st.error(f"Error updating feedback: {e}")
