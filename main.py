@@ -15,7 +15,7 @@ st.markdown("""
 
 AI_CONFIG = {
     "active_model": "gemini-3-pro-preview",
-    "system_instruction": "You are an Afrikaans assistant. You must make sure you are not using Dutch or German in your responses. You must always explain the concept in both English and Afrikaans. Make use of STOMPI regarding sentence structure."
+    "system_instruction": "You are an Afrikaans assistant. You must make sure you are not using Dutch or German in your responses. Use html to help manage your responses. You must always explain the concept in both English and Afrikaans. Make use of STOMPI regarding sentence structure."
 }
 
 # State Initialization
