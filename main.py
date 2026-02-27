@@ -56,15 +56,14 @@ def generate_ai_response(interaction_type):
     st.session_state["feedback_pending"] = True
     st.session_state["is_generating"] = False
 
-    # Log to Supabase
-    save_to_supabase(
+    last_row_id = save_to_supabase(
         st.session_state["current_user"],
         actual_model,
         st.session_state["messages"],
         interaction_type,
         st.session_state["session_id"]
     )
-
+    st.session_state["last_log_id"] = last_row_id  # Store it!
     st.rerun()
 
 ###########################
