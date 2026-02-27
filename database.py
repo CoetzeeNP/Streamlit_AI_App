@@ -1,13 +1,11 @@
 import streamlit as st
 from supabase import create_client, Client
 
-
 @st.cache_resource
 def get_supabase_client() -> Client:
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
-
 
 def save_to_supabase(user_id, model_name, messages, interaction_type, session_id, feedback_value=None):
     supabase = get_supabase_client()
@@ -28,7 +26,6 @@ def save_to_supabase(user_id, model_name, messages, interaction_type, session_id
     if response.data:
         return response.data[0]["id"]
     return None
-
 
 def update_previous_feedback(user_id, session_id, messages, understood_value):
     """Updates the 'user_understood' flag for the last assistant response"""

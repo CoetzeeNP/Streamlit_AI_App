@@ -31,33 +31,33 @@ def generate_ai_response(interaction_type):
     st.session_state["is_generating"] = True
     st.session_state["feedback_pending"] = False
 
+    # 1. Render the assistant bubble immediately
     with st.chat_message("assistant"):
-        with st.container(border=True):
-            st.markdown("**AI-frikaans Assistant:**")
-            ai_manager = AIManager(AI_CONFIG["active_model"])
+        # Create a placeholder inside the bubble
+        placeholder = st.empty()
+        full_res = ""
+        actual_model = AI_CONFIG["active_model"]
+        ai_manager = AIManager(AI_CONFIG["active_model"])
 
-            full_res = ""
-            actual_model = AI_CONFIG["active_model"]
-            placeholder = st.empty()
+        # 2. Show spinner while the FIRST chunk is being fetched
+        with st.spinner("Besig om te dink..."):
+            # 3. Stream the response
+            for chunk, model_label in ai_manager.get_response_stream(
+                    st.session_state["messages"],
+                    AI_CONFIG["system_instruction"]
+            ):
+                full_res += chunk
+                actual_model = model_label
+                # Update the placeholder with the cumulative Markdown
+                placeholder.markdown(full_res)
 
-            # Add the Streamlit spinner right here
-            with st.spinner("Dink aan jou vraag..."):  # "Thinking..." in Afrikaans
-                for chunk, model_label in ai_manager.get_response_stream(
-                        st.session_state["messages"],
-                        AI_CONFIG["system_instruction"]
-                ):
-                    full_res += chunk
-                    actual_model = model_label
-                    placeholder.markdown(full_res + "▌")
-
-            placeholder.markdown(full_res)
-
+    # 4. Save to Session State AFTER streaming completes
     st.session_state["messages"].append({"role": "assistant", "content": full_res})
     st.session_state["last_model_used"] = actual_model
     st.session_state["feedback_pending"] = True
     st.session_state["is_generating"] = False
 
-    # Capture the ID of the inserted row
+    # 5. Log to Supabase
     last_row_id = save_to_supabase(
         st.session_state["current_user"],
         actual_model,
@@ -65,8 +65,9 @@ def generate_ai_response(interaction_type):
         interaction_type,
         st.session_state["session_id"]
     )
-    st.session_state["last_log_id"] = last_row_id  # Store it!
-    st.rerun()
+    st.session_state["last_log_id"] = last_row_id
+
+    # 6. Single rerun to refresh the UI and show feedback buttons
     st.rerun()
 
 ###########################
@@ -130,7 +131,8 @@ st.title("AI-frikaans Assistant")
 if not st.session_state["authenticated"]:
     st.warning("Please login via the sidebar.")
     st.info("Welcome to the AIfrikaans Assistant Streamlit App!\n You are welcome to ask all your afrikaans related questions here. \n\n"
-            "All your prompts and generated responses are recorded while using the app. You will be asked for feedback after each questions. If you click the \"I need more help\" button, the large language model will try and be more detailed in its explanation to try assist you learn!"
+            "All your prompts and generated responses are recorded while using the app. You will be asked for feedback after each questions. "
+            "If you click the \"I need more help\" button, the large language model will try and be more detailed in its explanation to try assist you learn!"
             "\n\nPlease remember that large language models are not perfect and are prone to hallucinations or representing false information as fact quite convincingly")
     st.stop()
 
@@ -166,10 +168,11 @@ if "pending_feedback_value" in st.session_state:
 
 # 2. Display Chat History
 for msg in st.session_state["messages"]:
+    role_label = "Assistant" if msg["role"] == "assistant" else st.session_state["current_user"]
     with st.chat_message(msg["role"]):
-        with st.container(border=True):
-            label = st.session_state["current_user"] if msg["role"] == "user" else "Assistant"
-            st.markdown(f"**{label}:**\n\n{msg['content']}")
+        # Bold the name at the top, then render the content as Markdown
+        st.write(f"**{role_label}:**")
+        st.markdown(msg["content"])
 
 # 3. Trigger clarification AI response if flagged
 if st.session_state.get("trigger_clarification"):
