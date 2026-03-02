@@ -14,7 +14,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 AI_CONFIG = {
-    "active_model": "gpt-5",
+    "active_model": "ChatGPT 5.2",
     "system_instruction": "You are an Afrikaans assistant. You must make sure you are not using Dutch or German in your responses. Use html to help manage your responses. You must always explain the concept in both English and Afrikaans. Make use of STOMPI regarding sentence structure."
 }
 
