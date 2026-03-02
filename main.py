@@ -199,41 +199,46 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
 
 # 5. Feedback UI — only shown when a response is complete and not currently generating
 if (
-        st.session_state["messages"]
-        and st.session_state["messages"][-1]["role"] == "assistant"
-        and st.session_state["feedback_pending"]
-        and not st.session_state.get("is_generating", False)
+    st.session_state["messages"]
+    and st.session_state["messages"][-1]["role"] == "assistant"
+    and st.session_state["feedback_pending"]
+    and not st.session_state.get("is_generating", False)
 ):
-    with st.form("feedback_form", clear_on_submit=True):
+    # STEP A: Initial choice (Only buttons)
+    if not st.session_state.get("show_clarification_input"):
         st.info("Please provide feedback on the generated response!")
-
-        # This allows the user to provide specific context
-        user_clarification = st.text_area(
-            "What specifically do you need more help with? (Optional)",
-            placeholder="e.g., I don't understand why the verb moved to the end..."
-        )
-
         c1, c2 = st.columns(2)
-        understood = c1.form_submit_button("I understand!", use_container_width=True)
-        needs_help = c2.form_submit_button("I need more help!", use_container_width=True)
 
-        if understood:
+        if c1.button("I understand!", use_container_width=True):
             st.session_state["feedback_pending"] = False
             st.session_state["pending_feedback_value"] = True
             st.rerun()
 
-        if needs_help:
-            # 1. Handle the "Generic Response" logic
-            final_text = user_clarification.strip()
-            if not final_text:
-                final_text = "I need more help. Please provide a more detailed explanation of the previous response."
-
-            # 2. Store the text so Section 1 can pick it up
-            st.session_state["user_provided_clarification"] = final_text
-            st.session_state["feedback_pending"] = False
-            st.session_state["pending_feedback_value"] = False
+        if c2.button("I need more help!", use_container_width=True):
+            st.session_state["show_clarification_input"] = True  # Open the input area
             st.rerun()
 
+    # STEP B: Clarification Form (Opens only after clicking help)
+    else:
+        with st.form("clarification_form", clear_on_submit=True):
+            st.markdown("### ✍️ How can I help further?")
+            user_text = st.text_area(
+                "Tell me what was unclear (or leave blank for a general explanation):",
+                placeholder="e.g. Can you explain the STOMPI rule in that last sentence?"
+            )
+
+            submit_help = st.form_submit_button("Ask for clarification", use_container_width=True)
+
+            if submit_help:
+                # If empty, use your generic fallback
+                final_text = user_text.strip() if user_text.strip() else "I need more help. Please provide a more detailed explanation of your previous response."
+
+                # Update state for Section 1 to process
+                st.session_state["user_provided_clarification"] = final_text
+                st.session_state["pending_feedback_value"] = False
+                st.session_state["feedback_pending"] = False
+                st.session_state["show_clarification_input"] = False  # Reset flag
+                st.rerun()
 # 6. Generate Standard Response
 if (
     st.session_state["messages"]
