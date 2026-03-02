@@ -7,7 +7,7 @@ def get_supabase_client() -> Client:
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
 
-def save_to_supabase(user_id, model_name, messages, interaction_type, session_id, feedback_value=None):
+def save_to_supabase(user_id, messages, interaction_type, session_id, feedback_value=None, model_name=None):
     supabase = get_supabase_client()
     last_msg = messages[-1]
 
