@@ -137,22 +137,28 @@ if not st.session_state["authenticated"]:
 #    At this point feedback_pending is already False (set in handle_feedback),
 #    so the feedback buttons will not render this cycle — no duplicate UI.
 if "pending_feedback_value" in st.session_state:
+    # 1. Pop the state so this block only runs once per feedback cycle
     understood = st.session_state.pop("pending_feedback_value")
     log_id = st.session_state.get("last_log_id")
 
     if log_id:
         supabase = get_supabase_client()
         if understood:
-            # UPDATE existing row instead of inserting new one
+            # UPDATE existing row for positive feedback
             supabase.table("chat_logs").update({"user_understood": True}).eq("id", log_id).execute()
         else:
-            # Update the existing row to False
+            # UPDATE existing row for negative feedback
             supabase.table("chat_logs").update({"user_understood": False}).eq("id", log_id).execute()
 
-            # NOW add the clarification request as a NEW user message row
-            clarification_text = "I don't understand the previous explanation. Please break it down further."
+            # 2. Retrieve the text the user typed in the form (Section 5)
+            # If they typed nothing, it defaults to the generic string
+            raw_text = st.session_state.pop("user_provided_clarification", "").strip()
+            clarification_text = raw_text if raw_text else "I need more help. Please explain the previous response in more detail to help me learn."
+
+            # 3. Add the user's specific (or generic) request to the chat history
             st.session_state["messages"].append({"role": "user", "content": clarification_text})
 
+            # 4. Save this new 'Clarification Request' as its own entry in Supabase
             save_to_supabase(
                 st.session_state["current_user"],
                 st.session_state.get("last_model_used"),
@@ -160,6 +166,8 @@ if "pending_feedback_value" in st.session_state:
                 "CLARIFICATION_REQUEST",
                 st.session_state["session_id"]
             )
+
+            # 5. Flag the AI to respond to this new prompt
             st.session_state["trigger_clarification"] = True
 
 # 2. Display Chat History
@@ -191,24 +199,37 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
 
 # 5. Feedback UI — only shown when a response is complete and not currently generating
 if (
-    st.session_state["messages"]
-    and st.session_state["messages"][-1]["role"] == "assistant"
-    and st.session_state["feedback_pending"]
-    and not st.session_state.get("is_generating", False)
+        st.session_state["messages"]
+        and st.session_state["messages"][-1]["role"] == "assistant"
+        and st.session_state["feedback_pending"]
+        and not st.session_state.get("is_generating", False)
 ):
-    st.info("Please provide feedback on the generated response!")
-    with st.form("feedback_form", clear_on_submit=True, border=False):
-        c1, c2 = st.columns(2)
+    with st.form("feedback_form", clear_on_submit=True):
+        st.info("Please provide feedback on the generated response!")
 
+        # This allows the user to provide specific context
+        user_clarification = st.text_area(
+            "What specifically do you need more help with? (Optional)",
+            placeholder="e.g., I don't understand why the verb moved to the end..."
+        )
+
+        c1, c2 = st.columns(2)
         understood = c1.form_submit_button("I understand!", use_container_width=True)
-        not_understood = c2.form_submit_button("I need more help!", use_container_width=True)
+        needs_help = c2.form_submit_button("I need more help!", use_container_width=True)
 
         if understood:
             st.session_state["feedback_pending"] = False
             st.session_state["pending_feedback_value"] = True
             st.rerun()
 
-        if not_understood:
+        if needs_help:
+            # 1. Handle the "Generic Response" logic
+            final_text = user_clarification.strip()
+            if not final_text:
+                final_text = "I need more help. Please provide a more detailed explanation of the previous response."
+
+            # 2. Store the text so Section 1 can pick it up
+            st.session_state["user_provided_clarification"] = final_text
             st.session_state["feedback_pending"] = False
             st.session_state["pending_feedback_value"] = False
             st.rerun()
