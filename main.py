@@ -227,17 +227,33 @@ if (
                 placeholder="e.g. Can you explain the STOMPI rule in that last sentence?"
             )
 
-            submit_help = st.form_submit_button("Ask for clarification", use_container_width=True)
+            # Create two columns for the buttons
+            col_submit, col_cancel = st.columns(2)
+
+            # The green/primary button
+            submit_help = col_submit.form_submit_button(
+                "Ask for clarification",
+                use_container_width=True,
+                type="primary"
+            )
+
+            # The cancel button
+            cancel_help = col_cancel.form_submit_button(
+                "Cancel",
+                use_container_width=True
+            )
 
             if submit_help:
-                # If empty, use your generic fallback
                 final_text = user_text.strip() if user_text.strip() else "I need more help. Please provide a more detailed explanation of your previous response."
-
-                # Update state for Section 1 to process
                 st.session_state["user_provided_clarification"] = final_text
                 st.session_state["pending_feedback_value"] = False
                 st.session_state["feedback_pending"] = False
-                st.session_state["show_clarification_input"] = False  # Reset flag
+                st.session_state["show_clarification_input"] = False
+                st.rerun()
+
+            if cancel_help:
+                # Simply turn off the input flag and rerun to show the original buttons
+                st.session_state["show_clarification_input"] = False
                 st.rerun()
 # 6. Generate Standard Response
 if (
