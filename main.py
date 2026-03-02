@@ -190,6 +190,7 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
 
     save_to_supabase(
         st.session_state["current_user"],
+        AI_CONFIG["active_model"],
         st.session_state["messages"],
         "USER_PROMPT",
         st.session_state["session_id"]
