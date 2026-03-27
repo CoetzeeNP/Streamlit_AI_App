@@ -170,6 +170,31 @@ if "pending_feedback_value" in st.session_state:
             # 5. Flag the AI to respond to this new prompt
             st.session_state["trigger_clarification"] = True
 
+# 1b. Process Translation Request
+if st.session_state.get("pending_translation"):
+    st.session_state.pop("pending_translation")
+    log_id = st.session_state.get("last_log_id")
+
+    # 1. Update DB to show translation was requested for the previous response
+    if log_id:
+        supabase = get_supabase_client()
+        supabase.table("chat_logs").update({"translation_requested": True}).eq("id", log_id).execute()
+
+    # 2. Add translation prompt to history
+    trans_prompt = "Please translate your previous response into English."
+    st.session_state["messages"].append({"role": "user", "content": trans_prompt})
+
+    # 3. Log the request itself
+    save_to_supabase(
+        st.session_state["current_user"],
+        st.session_state.get("last_model_used"),
+        st.session_state["messages"],
+        "TRANSLATE_REQUEST",
+        st.session_state["session_id"]
+    )
+
+    # 4. Trigger the AI response
+    st.session_state["trigger_translation_ai"] = True
 # 2. Display Chat History
 for msg in st.session_state["messages"]:
     role_label = "Assistant" if msg["role"] == "assistant" else st.session_state["current_user"]
@@ -182,6 +207,11 @@ for msg in st.session_state["messages"]:
 if st.session_state.get("trigger_clarification"):
     st.session_state["trigger_clarification"] = False
     generate_ai_response("CLARIFICATION_RESPONSE")
+
+# 3b. Trigger Translation AI response
+if st.session_state.get("trigger_translation_ai"):
+    st.session_state["trigger_translation_ai"] = False
+    generate_ai_response("TRANSLATE_RESPONSE")
 
 # 4. Chat Input
 input_msg = "Please provide feedback..." if st.session_state["feedback_pending"] else "Ask your afrikaans question here"
@@ -199,15 +229,15 @@ if prompt := st.chat_input(input_msg, disabled=st.session_state["feedback_pendin
 
 # 5. Feedback UI — only shown when a response is complete and not currently generating
 if (
-    st.session_state["messages"]
-    and st.session_state["messages"][-1]["role"] == "assistant"
-    and st.session_state["feedback_pending"]
-    and not st.session_state.get("is_generating", False)
+        st.session_state["messages"]
+        and st.session_state["messages"][-1]["role"] == "assistant"
+        and st.session_state["feedback_pending"]
+        and not st.session_state.get("is_generating", False)
 ):
-    # STEP A: Initial choice (Only buttons)
     if not st.session_state.get("show_clarification_input"):
-        st.info("Please provide feedback on the generated response!")
-        c1, c2 = st.columns(2)
+        st.info("Please provide feedback or request a translation!")
+        # Create 3 columns instead of 2
+        c1, c2, c3 = st.columns(3)
 
         if c1.button("I understand!", use_container_width=True):
             st.session_state["feedback_pending"] = False
@@ -215,7 +245,13 @@ if (
             st.rerun()
 
         if c2.button("I need more help!", use_container_width=True):
-            st.session_state["show_clarification_input"] = True  # Open the input area
+            st.session_state["show_clarification_input"] = True
+            st.rerun()
+
+        # NEW: Translation Button
+        if c3.button("Translate to English", use_container_width=True):
+            st.session_state["pending_translation"] = True
+            st.session_state["feedback_pending"] = False
             st.rerun()
 
     # STEP B: Clarification Form (Opens only after clicking help)
