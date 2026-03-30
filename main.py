@@ -127,7 +127,7 @@ st.title("AI-frikaans Assistant")
 if not st.session_state["authenticated"]:
     st.warning("Please login via the sidebar.")
     st.info(
-        "Welcome to the AIfrikaans Assistant Streamlit App!\n You are welcome to ask all your afrikaans related questions here."
+        "Welcome to the AI-frikaans Assistant Streamlit App!\n You are welcome to ask all your afrikaans related questions here."
 
         "\n\nAll your prompts and generated responses are recorded while using the app. You will be asked for feedback after each questions."
 
@@ -293,7 +293,7 @@ if (
         st.session_state["feedback_pending"] = False
         st.rerun()
 
-    # ❌ NEED HELP
+    # NEED HELP
     if c2.button("I need more help!", use_container_width=True):
         log_id = st.session_state.get("last_log_id")
 
@@ -307,7 +307,7 @@ if (
         st.session_state["feedback_pending"] = False
         st.rerun()
 
-    # 🌍 TRANSLATE
+    # TRANSLATE
     if c3.button("Translate to English", use_container_width=True):
         log_id = st.session_state.get("last_log_id")
 
@@ -333,7 +333,7 @@ if (
         st.session_state["feedback_pending"] = False
         st.rerun()
 
-    # 👨‍🏫 ASK TUTOR BUTTON ONLY (no prompt logic here!)
+    # ASK TUTOR BUTTON ONLY (no prompt logic here!)
     if c4.button("Ask Tutor", use_container_width=True):
         st.session_state["awaiting_tutor_request"] = True
         st.session_state["feedback_pending"] = False
