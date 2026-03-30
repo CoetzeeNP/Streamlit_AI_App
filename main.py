@@ -199,11 +199,30 @@ if prompt:
                 "tutor_request_text": prompt
             }).eq("id", log_id).execute()
 
-        # confirmation message
+        # 1. Add the user's request to the session
+        st.session_state["messages"].append({
+            "role": "user",
+            "content": prompt
+        })
+
+        # 2. Add the confirmation assistant message
+        confirmation_msg = "Jou versoek is gestuur. Roep asseblief nou jou tutor vir verdere hulp."
         st.session_state["messages"].append({
             "role": "assistant",
-            "content": "👨‍🏫 Your question has been sent to a tutor."
+            "content": confirmation_msg
         })
+
+        # 3. Save the final state to Supabase
+        save_to_supabase(
+            st.session_state["current_user"],
+            AI_CONFIG["active_model"],
+            st.session_state["messages"],
+            interaction_type,
+            st.session_state["session_id"]
+        )
+
+        # 4. Rerun to show messages and STOP the script (prevents AI generation)
+        st.rerun()
 
     # =========================
     # 📚 CLARIFICATION FLOW
