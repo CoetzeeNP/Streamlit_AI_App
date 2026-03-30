@@ -203,11 +203,20 @@ if (
 
     c1, c2, c3, c4 = st.columns(4)
 
+    # ✅ UNDERSTOOD
     if c1.button("I understand!", use_container_width=True):
+        log_id = st.session_state.get("last_log_id")
+
+        if log_id:
+            supabase = get_supabase_client()
+            supabase.table("chat_logs").update({
+                "user_understood": True
+            }).eq("id", log_id).execute()
+
         st.session_state["feedback_pending"] = False
-        st.session_state["pending_feedback_value"] = True
         st.rerun()
 
+    # ❌ NEED HELP
     if c2.button("I need more help!", use_container_width=True):
         log_id = st.session_state.get("last_log_id")
 
@@ -221,6 +230,7 @@ if (
         st.session_state["feedback_pending"] = False
         st.rerun()
 
+    # 🌍 TRANSLATE
     if c3.button("Translate to English", use_container_width=True):
         log_id = st.session_state.get("last_log_id")
 
@@ -235,7 +245,18 @@ if (
             "content": "Please translate your previous response into English."
         })
 
-    # 👨‍🏫 ASK TUTOR (NEW)
+        save_to_supabase(
+            st.session_state["current_user"],
+            st.session_state.get("last_model_used"),
+            st.session_state["messages"],
+            "TRANSLATE_REQUEST",
+            st.session_state["session_id"]
+        )
+
+        st.session_state["feedback_pending"] = False
+        st.rerun()
+
+    # 👨‍🏫 ASK TUTOR
     if c4.button("Ask Tutor", use_container_width=True):
         log_id = st.session_state.get("last_log_id")
 
@@ -243,25 +264,25 @@ if (
             supabase = get_supabase_client()
             supabase.table("chat_logs").update({
                 "ask_tutor": True,
-                "user_understood": False  # optional but recommended
+                "user_understood": False
             }).eq("id", log_id).execute()
 
-        # Optional: Add message to chat
+        # Optional UI message
         st.session_state["messages"].append({
             "role": "assistant",
-            "content": "👨‍🏫 Your request has been flagged for tutor assistance. A human tutor will review this."
+            "content": "👨‍🏫 Your request has been sent to a tutor."
         })
 
-    save_to_supabase(
-        st.session_state["current_user"],
-        st.session_state.get("last_model_used"),
-        st.session_state["messages"],
-        "TRANSLATE_REQUEST",
-        st.session_state["session_id"]
-    )
+        save_to_supabase(
+            st.session_state["current_user"],
+            st.session_state.get("last_model_used"),
+            st.session_state["messages"],
+            "TUTOR_REQUEST",
+            st.session_state["session_id"]
+        )
 
-    st.session_state["feedback_pending"] = False
-    st.rerun()
+        st.session_state["feedback_pending"] = False
+        st.rerun()
 
 
 # =========================
