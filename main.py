@@ -235,33 +235,33 @@ if (
             "content": "Please translate your previous response into English."
         })
 
-        # 👨‍🏫 ASK TUTOR (NEW)
-        if c4.button("Ask Tutor", use_container_width=True):
-            log_id = st.session_state.get("last_log_id")
+    # 👨‍🏫 ASK TUTOR (NEW)
+    if c4.button("Ask Tutor", use_container_width=True):
+        log_id = st.session_state.get("last_log_id")
 
-            if log_id:
-                supabase = get_supabase_client()
-                supabase.table("chat_logs").update({
-                    "ask_tutor": True,
-                    "user_understood": False  # optional but recommended
-                }).eq("id", log_id).execute()
+        if log_id:
+            supabase = get_supabase_client()
+            supabase.table("chat_logs").update({
+                "ask_tutor": True,
+                "user_understood": False  # optional but recommended
+            }).eq("id", log_id).execute()
 
-            # Optional: Add message to chat
-            st.session_state["messages"].append({
-                "role": "assistant",
-                "content": "👨‍🏫 Your request has been flagged for tutor assistance. A human tutor will review this."
-            })
+        # Optional: Add message to chat
+        st.session_state["messages"].append({
+            "role": "assistant",
+            "content": "👨‍🏫 Your request has been flagged for tutor assistance. A human tutor will review this."
+        })
 
-        save_to_supabase(
-            st.session_state["current_user"],
-            st.session_state.get("last_model_used"),
-            st.session_state["messages"],
-            "TRANSLATE_REQUEST",
-            st.session_state["session_id"]
-        )
+    save_to_supabase(
+        st.session_state["current_user"],
+        st.session_state.get("last_model_used"),
+        st.session_state["messages"],
+        "TRANSLATE_REQUEST",
+        st.session_state["session_id"]
+    )
 
-        st.session_state["feedback_pending"] = False
-        st.rerun()
+    st.session_state["feedback_pending"] = False
+    st.rerun()
 
 
 # =========================
