@@ -170,14 +170,46 @@ prompt = st.chat_input(
 if prompt:
     interaction_type = "USER_PROMPT"
 
-    if st.session_state.get("awaiting_clarification"):
+    # =========================
+    # 👨‍🏫 TUTOR REQUEST FLOW (FIRST)
+    # =========================
+    if st.session_state.get("awaiting_tutor_request"):
+        interaction_type = "TUTOR_REQUEST"
+        st.session_state["awaiting_tutor_request"] = False
+
+        log_id = st.session_state.get("last_log_id")
+
+        if log_id:
+            supabase = get_supabase_client()
+            supabase.table("chat_logs").update({
+                "ask_tutor": True,
+                "user_understood": False,
+                "tutor_request_text": prompt
+            }).eq("id", log_id).execute()
+
+        # confirmation message
+        st.session_state["messages"].append({
+            "role": "assistant",
+            "content": "👨‍🏫 Your question has been sent to a tutor."
+        })
+
+    # =========================
+    # 📚 CLARIFICATION FLOW
+    # =========================
+    elif st.session_state.get("awaiting_clarification"):
         interaction_type = "CLARIFICATION_REQUEST"
         st.session_state["awaiting_clarification"] = False
 
         if not prompt.strip():
             prompt = "Please explain the previous response in more detail."
 
-    st.session_state["messages"].append({"role": "user", "content": prompt})
+    # =========================
+    # NORMAL FLOW
+    # =========================
+    st.session_state["messages"].append({
+        "role": "user",
+        "content": prompt
+    })
 
     save_to_supabase(
         st.session_state["current_user"],
@@ -188,7 +220,6 @@ if prompt:
     )
 
     st.rerun()
-
 
 # =========================
 # FEEDBACK BUTTONS
@@ -256,34 +287,11 @@ if (
         st.session_state["feedback_pending"] = False
         st.rerun()
 
-    # 👨‍🏫 ASK TUTOR
+    # 👨‍🏫 ASK TUTOR BUTTON ONLY (no prompt logic here!)
     if c4.button("Ask Tutor", use_container_width=True):
-        log_id = st.session_state.get("last_log_id")
-
-        if log_id:
-            supabase = get_supabase_client()
-            supabase.table("chat_logs").update({
-                "ask_tutor": True,
-                "user_understood": False
-            }).eq("id", log_id).execute()
-
-        # Optional UI message
-        st.session_state["messages"].append({
-            "role": "assistant",
-            "content": "👨‍🏫 Your request has been sent to a tutor."
-        })
-
-        save_to_supabase(
-            st.session_state["current_user"],
-            st.session_state.get("last_model_used"),
-            st.session_state["messages"],
-            "TUTOR_REQUEST",
-            st.session_state["session_id"]
-        )
-
+        st.session_state["awaiting_tutor_request"] = True
         st.session_state["feedback_pending"] = False
         st.rerun()
-
 
 # =========================
 # GENERATE RESPONSE
