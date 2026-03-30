@@ -1,5 +1,6 @@
 import streamlit as st
 from supabase import create_client, Client
+from bs4 import BeautifulSoup
 
 @st.cache_resource
 def get_supabase_client() -> Client:
@@ -7,24 +8,42 @@ def get_supabase_client() -> Client:
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
 
+def strip_html(html_content):
+
+    if not html_content:
+        return ""
+
+    soup = BeautifulSoup(html_content, "html.parser")
+
+    return soup.get_text(separator=" ")
+
 def save_to_supabase(user_id, model_name, messages, interaction_type, session_id, feedback_value=None):
+    if not messages:
+        return None
+
     supabase = get_supabase_client()
     last_msg = messages[-1]
+
+    # Clean the content specifically for the database
+    clean_content = strip_html(last_msg.get("content", ""))
 
     data = {
         "user_id": str(user_id),
         "session_id": session_id,
         "interaction_type": interaction_type,
         "model_name": model_name,
-        "role": last_msg["role"],
-        "content": last_msg["content"],
+        "role": last_msg.get("role"),
+        "content": clean_content,
         "user_understood": feedback_value
     }
 
-    # .execute() returns the inserted row. We catch the ID.
-    response = supabase.table("chat_logs").insert(data).execute()
-    if response.data:
-        return response.data[0]["id"]
+    try:
+        response = supabase.table("chat_logs").insert(data).execute()
+        if response.data:
+            return response.data[0]["id"]
+    except Exception as e:
+        st.error(f"Database error: {e}")
+
     return None
 
 def update_previous_feedback(user_id, session_id, messages, understood_value):
