@@ -201,7 +201,7 @@ if (
 ):
     st.info("Please provide feedback or request help!")
 
-    c1, c2, c3, c4 = st.columns(3)
+    c1, c2, c3, c4 = st.columns(4)
 
     if c1.button("I understand!", use_container_width=True):
         st.session_state["feedback_pending"] = False
