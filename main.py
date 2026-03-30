@@ -127,17 +127,17 @@ st.title("AI-frikaans Assistant")
 if not st.session_state["authenticated"]:
     st.warning("Please login via the sidebar.")
     st.info(
-        "Welcome to the AIfrikaans Assistant Streamlit App!\n You are welcome to ask all your afrikaans related questions here. \n\n"
+        "Welcome to the AIfrikaans Assistant Streamlit App!\n You are welcome to ask all your afrikaans related questions here."
 
-        "All your prompts and generated responses are recorded while using the app. You will be asked for feedback after each questions. "
+        "\n\nAll your prompts and generated responses are recorded while using the app. You will be asked for feedback after each questions."
 
-        "If you click the \"I need more help\" button, the large language model will try and be more detailed in its explanation to try assist you learn!"
+        "\n\nIf you click the \"I need more help\" button, the large language model will try and be more detailed in its explanation to try assist you learn!"
         
-        "If you need to translate the response into English click on the \"Translate to English\" button"
+        "\n\nIf you need to translate the response into English click on the \"Translate to English\" button"
         
-        "If you need assistance from a tutor click on the \"Ask Tutor\" button"
+        "\n\nIf you need assistance from a tutor click on the \"Ask Tutor\" button"
         
-        "Do not insert any personal or self-identifying information into the model!"
+        "\n\nDo not insert any personal or self-identifying information into the model!"
 
         "\n\nPlease remember that large language models are not perfect and are prone to hallucinations or representing false information as fact quite convincingly")
 
