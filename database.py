@@ -9,7 +9,6 @@ def get_supabase_client() -> Client:
     return create_client(url, key)
 
 def strip_html(html_content):
-
     if not html_content:
         return ""
 
@@ -46,8 +45,8 @@ def save_to_supabase(user_id, model_name, messages, interaction_type, session_id
 
     return None
 
-def update_previous_feedback(user_id, session_id, messages, understood_value):
-    """Updates the 'user_understood' flag for the last assistant response"""
+def update_previous_feedback(user_id, session_id, understood_value):
+    # Updates the 'user_understood' flag for the last assistant response
     supabase = get_supabase_client()
 
     # Find the last record for this user/session that was an assistant response
