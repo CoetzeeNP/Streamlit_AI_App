@@ -201,7 +201,7 @@ if (
 ):
     st.info("Please provide feedback or request help!")
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3, c4 = st.columns(3)
 
     if c1.button("I understand!", use_container_width=True):
         st.session_state["feedback_pending"] = False
@@ -209,15 +209,48 @@ if (
         st.rerun()
 
     if c2.button("I need more help!", use_container_width=True):
+        log_id = st.session_state.get("last_log_id")
+
+        if log_id:
+            supabase = get_supabase_client()
+            supabase.table("chat_logs").update({
+                "user_understood": False
+            }).eq("id", log_id).execute()
+
         st.session_state["awaiting_clarification"] = True
         st.session_state["feedback_pending"] = False
         st.rerun()
 
     if c3.button("Translate to English", use_container_width=True):
+        log_id = st.session_state.get("last_log_id")
+
+        if log_id:
+            supabase = get_supabase_client()
+            supabase.table("chat_logs").update({
+                "translation_requested": True
+            }).eq("id", log_id).execute()
+
         st.session_state["messages"].append({
             "role": "user",
             "content": "Please translate your previous response into English."
         })
+
+        # 👨‍🏫 ASK TUTOR (NEW)
+        if c4.button("Ask Tutor", use_container_width=True):
+            log_id = st.session_state.get("last_log_id")
+
+            if log_id:
+                supabase = get_supabase_client()
+                supabase.table("chat_logs").update({
+                    "ask_tutor": True,
+                    "user_understood": False  # optional but recommended
+                }).eq("id", log_id).execute()
+
+            # Optional: Add message to chat
+            st.session_state["messages"].append({
+                "role": "assistant",
+                "content": "👨‍🏫 Your request has been flagged for tutor assistance. A human tutor will review this."
+            })
 
         save_to_supabase(
             st.session_state["current_user"],
