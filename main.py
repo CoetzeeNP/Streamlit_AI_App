@@ -161,10 +161,22 @@ elif st.session_state["feedback_pending"]:
 else:
     input_msg = "Ask your afrikaans question here"
 
+# =========================
+# DYNAMIC INPUT MESSAGE
+# =========================
+if st.session_state.get("awaiting_tutor_request"):
+    input_msg = "What would you like to ask the tutor?"
+elif st.session_state.get("awaiting_clarification"):
+    input_msg = "What would you like me to explain further?"
+else:
+    input_msg = "Type your message here..."
+
 
 prompt = st.chat_input(
     input_msg,
-    disabled=st.session_state["feedback_pending"] and not st.session_state.get("awaiting_clarification")
+    disabled=st.session_state["feedback_pending"]
+    and not st.session_state.get("awaiting_clarification")
+    and not st.session_state.get("awaiting_tutor_request")
 )
 
 if prompt:
